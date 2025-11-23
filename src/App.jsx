@@ -392,10 +392,10 @@ const NanoBananaApp = () => {
     } else {
       // Generation Mode
       isEditing = false;
-      url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${apiKey}`;
+      url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`;
       payload = {
-        instances: [{ prompt: prompt }],
-        parameters: { sampleCount: 1 }
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseModalities: ['IMAGE'] }
       };
     }
 
@@ -419,15 +419,10 @@ const NanoBananaApp = () => {
         const result = await response.json();
         
         let base64Image;
-        if (isEditing) {
-          const part = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
-          if (part && part.inlineData && part.inlineData.data) {
-             base64Image = part.inlineData.data;
-          }
-        } else {
-          if (result.predictions && result.predictions[0] && result.predictions[0].bytesBase64Encoded) {
-            base64Image = result.predictions[0].bytesBase64Encoded;
-          }
+        // Both editing and generation use the same API response format
+        const part = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+        if (part && part.inlineData && part.inlineData.data) {
+          base64Image = part.inlineData.data;
         }
 
         if (base64Image) {
