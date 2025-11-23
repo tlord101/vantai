@@ -24,9 +24,9 @@ class ImagenService {
         enhancedPrompt = `Edit and enhance this image: ${prompt}. Maintain the original composition while applying the requested changes.`;
       }
 
-      // Generate content using Imagen 3
+      // Generate content using Gemini 2.0 Flash with image generation
       const response = await ai.models.generateContent({
-        model: 'gemini-3-pro-image-preview',
+        model: 'gemini-2.0-flash-exp',
         contents: enhancedPrompt,
         config: {
           tools: [{ googleSearch: {} }],
@@ -57,7 +57,7 @@ class ImagenService {
 
       throw new Error('No image data found in response');
     } catch (error: any) {
-      console.error('Error generating image with Imagen 3:', error);
+      console.error('Error generating image with Gemini 2.0 Flash:', error);
       throw new Error(error.message || 'Failed to generate image. Please check your API key and try again.');
     }
   }
@@ -74,10 +74,10 @@ class ImagenService {
         generatedImage
       };
     } catch (error: any) {
-      console.error('Error with Imagen 3 API:', error);
+      console.error('Error with Gemini 2.0 Flash API:', error);
       
       return {
-        text: `❌ Image generation failed: ${error.message}\n\n💡 Tips:\n• Make sure your API key is valid\n• Ensure Imagen 3 API is enabled in Google Cloud\n• Try a different prompt`
+        text: `❌ Image generation failed: ${error.message}\n\n💡 Tips:\n• Make sure your API key is valid\n• Ensure Gemini API is enabled in Google Cloud\n• Try a different prompt`
       };
     }
   }
