@@ -635,7 +635,7 @@
             const handler = PaystackPop.setup({
                 key: PAYSTACK_PUBLIC_KEY,
                 email: currentUser.email,
-                amount: currentAmount * PRICE_PER_NANO * 100, // In Kobo
+                amount: currentAmount * PRICE_PER_NANO * 1000, // In Kobo
                 currency: 'NGN',
                 metadata: { custom_fields: [{ display_name: "Nano Credits", variable_name: "nano_credits", value: currentAmount }] },
                 callback: async function (response) {
