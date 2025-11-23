@@ -139,7 +139,7 @@ export function SubscriptionPage({ onSubscribed, onClose }: SubscriptionPageProp
             animate={{ opacity: 1, y: 0 }}
             className="mb-6 sm:mb-8"
           >
-            <GlassCard className="p-4 sm:p-6">m:p-6">
+            <GlassCard className="p-4 sm:p-6">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <h3 className="text-white font-semibold text-base sm:text-lg">
@@ -151,7 +151,7 @@ export function SubscriptionPage({ onSubscribed, onClose }: SubscriptionPageProp
                     ) : (
                       <span>Valid until {currentSubscription.endDate.toLocaleDateString()}</span>
                     )}
-                  )}>
+                  </p>
                 </div>
                 <div className="text-left sm:text-right">
                   <p className="text-white/60 text-xs sm:text-sm">Images used today</p>
