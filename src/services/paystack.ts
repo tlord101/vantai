@@ -30,8 +30,12 @@ export class PaystackService {
       amount: config.amount * 100, // Convert to kobo
       ref: config.ref,
       metadata: config.metadata,
-      onClose: config.onClose,
-      callback: config.onSuccess,
+      onClose: function() {
+        config.onClose();
+      },
+      callback: function(response: any) {
+        config.onSuccess(response);
+      },
     });
     handler.openIframe();
   }
