@@ -4,6 +4,7 @@ import {
   AlertCircle, Settings, X, Loader2, Upload, Trash2, 
   CreditCard, LogOut, Coins, User, CheckCircle2, ShieldCheck 
 } from 'lucide-react';
+import { GoogleGenAI } from '@google/genai';
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
@@ -385,60 +386,47 @@ const NanoBananaApp = () => {
       return;
     }
 
-    // 3. API Call
-    let url, payload, isEditing;
-
-    if (uploadedImage) {
-      // Editing Mode
-      isEditing = true;
-      url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${apiKey}`;
-      const base64Data = uploadedImage.split(',')[1];
-      const mimeType = uploadedImage.split(';')[0].split(':')[1];
-
-      payload = {
-        contents: [{
-          parts: [
-            { text: prompt },
-            { inlineData: { mimeType: mimeType, data: base64Data } }
-          ]
-        }],
-        generationConfig: { responseModalities: ['IMAGE'] }
-      };
-    } else {
-      // Generation Mode
-      isEditing = false;
-      url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`;
-      payload = {
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseModalities: ['IMAGE'] }
-      };
-    }
-
+    // 3. API Call using Google GenAI SDK
+    const ai = new GoogleGenAI({ apiKey });
+    
     const makeRequest = async (retryCount = 0) => {
       try {
         setProgress(50 + (retryCount * 10));
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-          let errorMsg = `Error: ${response.status} ${response.statusText}`;
-          try {
-            const errorData = await response.json();
-            errorMsg = errorData.error?.message || errorMsg;
-          } catch(e) {}
-          throw new Error(errorMsg);
+        
+        let promptContent;
+        const model = uploadedImage ? "gemini-2.5-flash-image" : "gemini-2.5-flash-image";
+        
+        if (uploadedImage) {
+          // Editing Mode - include image with prompt
+          const base64Data = uploadedImage.split(',')[1];
+          const mimeType = uploadedImage.split(';')[0].split(':')[1];
+          
+          promptContent = [
+            { text: prompt },
+            {
+              inlineData: {
+                mimeType: mimeType,
+                data: base64Data,
+              },
+            },
+          ];
+        } else {
+          // Generation Mode - text only
+          promptContent = prompt;
         }
 
-        const result = await response.json();
-        
-        let base64Image;
-        // Both editing and generation use the same API response format
-        const part = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
-        if (part && part.inlineData && part.inlineData.data) {
-          base64Image = part.inlineData.data;
+        const response = await ai.models.generateContent({
+          model: model,
+          contents: promptContent,
+        });
+
+        // Extract image from response
+        let base64Image = null;
+        for (const part of response.candidates[0].content.parts) {
+          if (part.inlineData) {
+            base64Image = part.inlineData.data;
+            break;
+          }
         }
 
         if (base64Image) {
@@ -446,21 +434,22 @@ const NanoBananaApp = () => {
           setGeneratedImage(`data:image/png;base64,${base64Image}`);
           setProgress(100);
         } else {
-          throw new Error("Unexpected response format. No image data found.");
+          throw new Error("No image data found in response.");
         }
 
       } catch (err) {
-        // Handle 429 rate limit errors with exponential backoff
-        if (err.message.includes('429') || err.message.includes('Too Many Requests')) {
-          if (retryCount < 5) {
-            const delay = Math.pow(2, retryCount + 2) * 1000; // Longer delays for rate limits
-            setError(`Rate limited. Retrying in ${delay / 1000} seconds...`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-            setError(''); // Clear error before retry
-            return makeRequest(retryCount + 1);
-          }
-        } else if (retryCount < 3) {
-          // Other errors: shorter retry
+        console.error('Generation error:', err);
+        
+        // Handle rate limiting and retries
+        const is429 = err.message?.includes('429') || err.message?.includes('Too Many Requests') || err.message?.includes('RESOURCE_EXHAUSTED');
+        
+        if (is429 && retryCount < 5) {
+          const delay = Math.pow(2, retryCount + 2) * 1000;
+          setError(`Rate limited. Retrying in ${delay / 1000} seconds...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          setError('');
+          return makeRequest(retryCount + 1);
+        } else if (!is429 && retryCount < 3) {
           const delay = Math.pow(2, retryCount) * 1000;
           await new Promise(resolve => setTimeout(resolve, delay));
           return makeRequest(retryCount + 1);
