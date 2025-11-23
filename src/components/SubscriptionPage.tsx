@@ -117,7 +117,7 @@ export function SubscriptionPage({ onSubscribed, onClose }: SubscriptionPageProp
           </motion.div>
           <h1 className="text-5xl font-bold text-white mb-4">Choose Your Plan</h1>
           <p className="text-white/70 text-lg">
-            Unlock the full power of AI chat with image generation
+            Generate unlimited AI images with Google Imagen 3
           </p>
           
           {onClose && (

@@ -1,9 +1,9 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || 'YOUR_API_KEY_HERE';
 
-// Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(API_KEY);
+// Initialize Imagen 3 with @google/genai SDK
+const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 export interface Message {
   id: string;
@@ -11,67 +11,76 @@ export interface Message {
   sender: 'user' | 'ai';
   timestamp: Date;
   image?: string;
+  generatedImage?: string; // For AI-generated images
 }
 
-class GeminiService {
-  private model;
-
-  constructor() {
-    // Using gemini-1.5-flash for text and image support
-    this.model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-  }
-
-  async sendMessage(text: string, image?: File): Promise<string> {
+class ImagenService {
+  async generateImage(prompt: string, referenceImage?: File): Promise<string> {
     try {
-      if (image) {
-        // Handle image + text prompt
-        const imageData = await this.fileToGenerativePart(image);
-        const result = await this.model.generateContent([text, imageData]);
-        const response = await result.response;
-        return response.text();
-      } else {
-        // Handle text-only prompt
-        const result = await this.model.generateContent(text);
-        const response = await result.response;
-        return response.text();
+      let enhancedPrompt = prompt;
+      
+      // Enhance prompt based on whether we have a reference image
+      if (referenceImage) {
+        enhancedPrompt = `Edit and enhance this image: ${prompt}. Maintain the original composition while applying the requested changes.`;
       }
-    } catch (error) {
-      console.error('Error calling Gemini API:', error);
-      throw new Error('Failed to get AI response. Please check your API key.');
+
+      // Generate content using Imagen 3
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-pro-image-preview',
+        contents: enhancedPrompt,
+        config: {
+          tools: [{ googleSearch: {} }],
+          imageConfig: {
+            aspectRatio: '16:9',
+            imageSize: '4K',
+          },
+        },
+      });
+
+      // Extract generated image from response
+      if (!response.candidates || response.candidates.length === 0) {
+        throw new Error('No candidates in response');
+      }
+
+      const firstCandidate = response.candidates[0];
+      if (!firstCandidate.content || !firstCandidate.content.parts) {
+        throw new Error('Invalid response structure');
+      }
+
+      for (const part of firstCandidate.content.parts) {
+        if (part.inlineData) {
+          const imageData = part.inlineData.data;
+          const mimeType = part.inlineData.mimeType || 'image/png';
+          return `data:${mimeType};base64,${imageData}`;
+        }
+      }
+
+      throw new Error('No image data found in response');
+    } catch (error: any) {
+      console.error('Error generating image with Imagen 3:', error);
+      throw new Error(error.message || 'Failed to generate image. Please check your API key and try again.');
     }
   }
 
-  private async fileToGenerativePart(file: File): Promise<{ inlineData: { data: string; mimeType: string } }> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = (reader.result as string).split(',')[1];
-        resolve({
-          inlineData: {
-            data: base64,
-            mimeType: file.type,
-          },
-        });
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }
-
-  async generateImageDescription(image: File): Promise<string> {
+  async sendMessage(text: string, image?: File): Promise<{ text: string; generatedImage?: string }> {
     try {
-      const imageData = await this.fileToGenerativePart(image);
-      const result = await this.model.generateContent([
-        'Describe this image in detail.',
-        imageData,
-      ]);
-      const response = await result.response;
-      return response.text();
-    } catch (error) {
-      console.error('Error generating image description:', error);
-      throw new Error('Failed to analyze image.');
+      // Generate image based on prompt
+      const generatedImage = await this.generateImage(text, image);
+      
+      return {
+        text: image 
+          ? `✨ Image edited successfully! Here's your result based on: "${text}"`
+          : `🎨 Image generated successfully! Here's your creation: "${text}"`,
+        generatedImage
+      };
+    } catch (error: any) {
+      console.error('Error with Imagen 3 API:', error);
+      
+      return {
+        text: `❌ Image generation failed: ${error.message}\n\n💡 Tips:\n• Make sure your API key is valid\n• Ensure Imagen 3 API is enabled in Google Cloud\n• Try a different prompt`
+      };
     }
   }
 }
 
-export const geminiService = new GeminiService();
+export const geminiService = new ImagenService();

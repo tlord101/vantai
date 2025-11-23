@@ -52,7 +52,7 @@ export const ChatHeader = ({ onClearChat, subscription, onUpgrade }: ChatHeaderP
           </motion.div>
 
           <div>
-            <h1 className="text-white font-bold text-lg">Gemini AI Chat</h1>
+            <h1 className="text-white font-bold text-lg">VanTai Image Generator</h1>
             <div className="flex items-center gap-2">
               <motion.div
                 animate={{

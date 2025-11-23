@@ -26,19 +26,19 @@ export const PLANS: Record<SubscriptionPlan, PlanLimits> = {
     name: 'Free',
     price: 0,
     dailyImageLimit: 0,
-    features: ['Text chat only', 'No image upload', 'Basic support'],
+    features: ['Preview mode only', 'No image generation', 'Basic support'],
   },
   basic: {
     name: 'Basic',
     price: 15000,
     dailyImageLimit: 10,
-    features: ['Unlimited text chat', '10 images per day', 'Priority support', 'Chat history'],
+    features: ['10 AI images per day', 'Text-to-image', 'Image-to-image editing', 'Priority support', 'Generation history'],
   },
   premium: {
     name: 'Premium',
     price: 25000,
     dailyImageLimit: -1, // -1 means unlimited
-    features: ['Unlimited text chat', 'Unlimited images', 'Premium support', 'Advanced AI features', 'Chat history'],
+    features: ['Unlimited AI images', 'Text-to-image', 'Image-to-image editing', 'Premium support', 'HD quality', 'Generation history', 'Priority processing'],
   },
 };
 

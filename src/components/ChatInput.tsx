@@ -111,7 +111,7 @@ export const ChatInput = ({ onSendMessage, isLoading, subscription }: ChatInputP
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyPress={handleKeyPress}
-          placeholder="Type a message..."
+          placeholder="Describe the image you want to generate or edit..."
           disabled={isLoading}
           rows={1}
           className="flex-1 bg-transparent text-white placeholder-white/50 resize-none outline-none max-h-32 custom-scrollbar disabled:opacity-50"

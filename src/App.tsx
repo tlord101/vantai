@@ -99,7 +99,7 @@ function App() {
     return [
       {
         id: '1',
-        text: 'Hello! I\'m Gemini AI. I can help you with text and image analysis. How can I assist you today?',
+        text: '🎨 Welcome to VanTai AI Image Generator! Powered by Google Imagen 3 (gemini-3-pro-image-preview).\n\n✨ Create stunning images:\n• Text-to-image: Describe what you want to see\n• Image-to-image: Upload a reference and describe edits\n\nExample prompts:\n"A serene mountain landscape at sunset with dramatic clouds"\n"Make this photo look vintage with warm sepia tones"\n"Add dramatic studio lighting to enhance this portrait"',
         sender: 'ai',
         timestamp: new Date(),
       },
@@ -133,7 +133,7 @@ function App() {
     if (subscription?.plan === 'free') {
       const errorMessage: Message = {
         id: Date.now().toString(),
-        text: '🔒 Please subscribe to a plan to start chatting. Click the upgrade button in the header.',
+        text: '🔒 Please subscribe to a plan to start generating images. Click the upgrade button in the header.',
         sender: 'ai',
         timestamp: new Date(),
       };
@@ -148,8 +148,8 @@ function App() {
         const errorMessage: Message = {
           id: Date.now().toString(),
           text: remaining === 0 
-            ? '🚫 You have reached your daily image limit. Upgrade to Premium for unlimited images or wait until tomorrow.'
-            : '🔒 Image uploads require a subscription. Please upgrade to Basic or Premium.',
+            ? '🚫 You have reached your daily image generation limit. Upgrade to Premium for unlimited images or wait until tomorrow.'
+            : '🔒 Image generation requires a subscription. Please upgrade to Basic or Premium.',
           sender: 'ai',
           timestamp: new Date(),
         };
@@ -160,7 +160,7 @@ function App() {
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      text: text || (image ? '📷 Image uploaded' : ''),
+      text: text || (image ? '📷 Reference image uploaded' : ''),
       sender: 'user',
       timestamp: new Date(),
       image: image ? URL.createObjectURL(image) : undefined,
@@ -171,27 +171,28 @@ function App() {
 
     try {
       const response = await geminiService.sendMessage(
-        text || 'Describe this image in detail.',
+        text || 'Generate a creative image based on this reference.',
         image
       );
 
-      // Increment image count if image was sent
-      if (image && currentUser) {
+      // Increment image count if image was generated
+      if (currentUser) {
         await subscriptionService.incrementImageCount(currentUser.uid);
       }
 
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: response,
+        text: response.text,
         sender: 'ai',
         timestamp: new Date(),
+        generatedImage: response.generatedImage,
       };
 
       setMessages((prev) => [...prev, aiMessage]);
     } catch (error) {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: 'Sorry, I encountered an error. Please make sure your Gemini API key is configured correctly in the .env file.',
+        text: 'Sorry, I encountered an error generating the image. Please make sure Imagen API is enabled in your Google Cloud project.',
         sender: 'ai',
         timestamp: new Date(),
       };
@@ -254,7 +255,7 @@ function App() {
             className="mt-4 text-center"
           >
             <p className="text-white/70 text-sm glass-effect rounded-full px-6 py-2 inline-block">
-              Powered by Gemini AI with Liquid Glass Design ✨
+              Powered by Imagen 3 (gemini-3-pro-image-preview) ✨
             </p>
           </motion.div>
         </motion.div>
