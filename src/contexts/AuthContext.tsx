@@ -40,17 +40,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
 
   async function signup(email: string, password: string, displayName: string) {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    if (userCredential.user) {
-      await updateProfile(userCredential.user, { displayName });
-      
-      // Store user data in Firestore
-      await setDoc(doc(db, 'users', userCredential.user.uid), {
-        email: userCredential.user.email,
-        displayName,
-        createdAt: new Date(),
-        isAdmin: false,
-      });
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      if (userCredential.user) {
+        await updateProfile(userCredential.user, { displayName });
+        
+        // Store user data in Firestore
+        await setDoc(doc(db, 'users', userCredential.user.uid), {
+          email: userCredential.user.email,
+          displayName,
+          createdAt: new Date(),
+          isAdmin: email === 'admin@vant.io',
+        });
+        
+        // Check if admin
+        if (email === 'admin@vant.io') {
+          setIsAdmin(true);
+        }
+      }
+    } catch (error: any) {
+      console.error('Signup error:', error);
+      throw error;
     }
   }
 
@@ -69,18 +79,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function loginWithGoogle() {
-    const provider = new GoogleAuthProvider();
-    const result = await signInWithPopup(auth, provider);
-    
-    // Store/update user data in Firestore
-    if (result.user) {
-      await setDoc(doc(db, 'users', result.user.uid), {
-        email: result.user.email,
-        displayName: result.user.displayName,
-        photoURL: result.user.photoURL,
-        lastLogin: new Date(),
-        isAdmin: false,
-      }, { merge: true });
+    try {
+      const provider = new GoogleAuthProvider();
+      // Add additional scopes if needed
+      provider.addScope('profile');
+      provider.addScope('email');
+      
+      // Set custom parameters for better UX
+      provider.setCustomParameters({
+        prompt: 'select_account'
+      });
+      
+      const result = await signInWithPopup(auth, provider);
+      
+      // Store/update user data in Firestore
+      if (result.user) {
+        await setDoc(doc(db, 'users', result.user.uid), {
+          email: result.user.email,
+          displayName: result.user.displayName,
+          photoURL: result.user.photoURL,
+          lastLogin: new Date(),
+          isAdmin: result.user.email === 'admin@vant.io',
+        }, { merge: true });
+        
+        // Check if admin
+        if (result.user.email === 'admin@vant.io') {
+          setIsAdmin(true);
+        }
+      }
+    } catch (error: any) {
+      console.error('Google sign-in error:', error);
+      // Re-throw the error so it can be caught by the UI
+      throw error;
     }
   }
 
