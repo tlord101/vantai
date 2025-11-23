@@ -7,12 +7,13 @@ import { MessageList } from './components/MessageList';
 import { ChatInput } from './components/ChatInput';
 import { AuthPage } from './components/AuthPage';
 import { SubscriptionPage } from './components/SubscriptionPage';
+import { AdminDashboard } from './components/AdminDashboard';
 import { useAuth } from './contexts/AuthContext';
 import { geminiService, Message } from './services/gemini';
 import { subscriptionService, SubscriptionData } from './services/subscription';
 
 function App() {
-  const { currentUser } = useAuth();
+  const { currentUser, isAdmin } = useAuth();
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [showSubscriptionPage, setShowSubscriptionPage] = useState(false);
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
@@ -24,6 +25,18 @@ function App() {
         <LiquidBackground />
         <div className="relative z-10">
           <AuthPage />
+        </div>
+      </div>
+    );
+  }
+
+  // Show admin dashboard if user is admin
+  if (isAdmin) {
+    return (
+      <div className="relative w-full h-screen overflow-hidden">
+        <LiquidBackground />
+        <div className="relative z-10">
+          <AdminDashboard />
         </div>
       </div>
     );

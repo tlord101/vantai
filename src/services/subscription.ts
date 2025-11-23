@@ -1,4 +1,4 @@
-import { getFirestore, doc, setDoc, getDoc, updateDoc, increment } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc, updateDoc, increment, collection, getDocs } from 'firebase/firestore';
 import { app } from './firebase';
 
 const db = getFirestore(app);
@@ -189,6 +189,79 @@ class SubscriptionService {
     } catch (error) {
       console.error('Error checking subscription status:', error);
       return false;
+    }
+  }
+
+  // Admin functions
+  async getAllUsers(): Promise<Array<{ uid: string; email: string; subscription: SubscriptionData }>> {
+    try {
+      const subscriptionsRef = collection(db, 'subscriptions');
+      const snapshot = await getDocs(subscriptionsRef);
+      
+      const users: Array<{ uid: string; email: string; subscription: SubscriptionData }> = [];
+      
+      for (const docSnap of snapshot.docs) {
+        const data = docSnap.data();
+        const userId = docSnap.id;
+        
+        // Try to get user email from auth
+        let email = 'Unknown';
+        try {
+          // Get email from users collection if it exists
+          const userDoc = await getDoc(doc(db, 'users', userId));
+          if (userDoc.exists()) {
+            email = userDoc.data().email || 'Unknown';
+          }
+        } catch (e) {
+          console.log('Could not fetch email for user:', userId);
+        }
+        
+        users.push({
+          uid: userId,
+          email,
+          subscription: {
+            plan: data.plan,
+            startDate: data.startDate?.toDate() || new Date(),
+            endDate: data.endDate?.toDate() || new Date(),
+            imagesUsedToday: data.imagesUsedToday || 0,
+            lastResetDate: data.lastResetDate || new Date().toDateString(),
+            paymentReference: data.paymentReference,
+          },
+        });
+      }
+      
+      return users;
+    } catch (error) {
+      console.error('Error getting all users:', error);
+      return [];
+    }
+  }
+
+  async updateUserPlan(userId: string, newPlan: SubscriptionPlan): Promise<void> {
+    try {
+      const docRef = doc(db, 'subscriptions', userId);
+      const now = new Date();
+      const endDate = new Date(now);
+      
+      // Set end date based on plan
+      if (newPlan === 'free') {
+        endDate.setFullYear(endDate.getFullYear() + 1); // 1 year for free
+      } else {
+        endDate.setMonth(endDate.getMonth() + 1); // 1 month for paid plans
+      }
+
+      await setDoc(docRef, {
+        plan: newPlan,
+        startDate: now,
+        endDate,
+        imagesUsedToday: 0,
+        lastResetDate: now.toDateString(),
+        paymentReference: `admin_updated_${Date.now()}`,
+        updatedAt: now,
+      }, { merge: true });
+    } catch (error) {
+      console.error('Error updating user plan:', error);
+      throw error;
     }
   }
 }

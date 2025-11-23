@@ -9,11 +9,15 @@ import {
   signInWithPopup,
   updateProfile,
 } from 'firebase/auth';
-import { auth } from '../services/firebase';
+import { doc, setDoc, getFirestore } from 'firebase/firestore';
+import { auth, app } from '../services/firebase';
+
+const db = getFirestore(app);
 
 interface AuthContextType {
   currentUser: User | null;
   loading: boolean;
+  isAdmin: boolean;
   signup: (email: string, password: string, displayName: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -33,30 +37,64 @@ export function useAuth() {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   async function signup(email: string, password: string, displayName: string) {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     if (userCredential.user) {
       await updateProfile(userCredential.user, { displayName });
+      
+      // Store user data in Firestore
+      await setDoc(doc(db, 'users', userCredential.user.uid), {
+        email: userCredential.user.email,
+        displayName,
+        createdAt: new Date(),
+        isAdmin: false,
+      });
     }
   }
 
-  function login(email: string, password: string) {
-    return signInWithEmailAndPassword(auth, email, password).then(() => {});
+  async function login(email: string, password: string) {
+    await signInWithEmailAndPassword(auth, email, password);
+    
+    // Check if admin
+    if (email === 'admin@vant.io') {
+      setIsAdmin(true);
+    }
   }
 
   function logout() {
+    setIsAdmin(false);
     return signOut(auth);
   }
 
   async function loginWithGoogle() {
     const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+    const result = await signInWithPopup(auth, provider);
+    
+    // Store/update user data in Firestore
+    if (result.user) {
+      await setDoc(doc(db, 'users', result.user.uid), {
+        email: result.user.email,
+        displayName: result.user.displayName,
+        photoURL: result.user.photoURL,
+        lastLogin: new Date(),
+        isAdmin: false,
+      }, { merge: true });
+    }
   }
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
+      
+      // Check if admin
+      if (user?.email === 'admin@vant.io') {
+        setIsAdmin(true);
+      } else {
+        setIsAdmin(false);
+      }
+      
       setLoading(false);
     });
 
@@ -66,6 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = {
     currentUser,
     loading,
+    isAdmin,
     signup,
     login,
     logout,
