@@ -1,11 +1,821 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nano Banana Gen 🍌</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Paystack JS -->
+    <script src="https://js.paystack.co/v1/inline.js"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* Custom Animations */
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slide-up {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .animate-fade-in {
+            animation: fade-in 0.3s ease-out forwards;
+        }
+
+        .animate-slide-up {
+            animation: slide-up 0.4s ease-out forwards;
+        }
+
+        /* Loading Spinner */
+        .loader {
+            border: 3px solid rgba(250, 204, 21, 0.1);
+            border-left-color: #FACC15;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Hide scrollbar for clean UI */
+        textarea::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        textarea::-webkit-scrollbar-track {
+            background: #171717;
+        }
+
+        textarea::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 4px;
+        }
+
+        textarea::-webkit-scrollbar-thumb:hover {
+            background: #444;
+        }
+    </style>
 </head>
-<body>
-  
+
+<body
+    class="bg-neutral-900 text-yellow-50 font-sans selection:bg-yellow-500 selection:text-neutral-900 overflow-x-hidden">
+
+    <!-- APP CONTAINER -->
+    <div id="app" class="min-h-screen flex flex-col relative">
+
+        <!-- ==================== AUTH VIEW ==================== -->
+        <div id="auth-view" class="min-h-screen flex flex-col items-center justify-center p-4 relative w-full">
+            <!-- Background Decorations -->
+            <div class="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
+                <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-yellow-500/10 rounded-full blur-3xl animate-pulse">
+                </div>
+                <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-yellow-400/5 rounded-full blur-3xl"></div>
+            </div>
+
+            <div
+                class="z-10 bg-neutral-800/50 p-8 rounded-3xl border border-yellow-500/20 shadow-2xl max-w-md w-full backdrop-blur-md animate-slide-up">
+                <div class="flex justify-center mb-6">
+                    <div class="bg-yellow-400 p-4 rounded-2xl shadow-lg rotate-3 hover:rotate-6 transition-transform">
+                        <i data-lucide="banana" class="w-10 h-10 text-neutral-900 fill-neutral-900"></i>
+                    </div>
+                </div>
+
+                <h1 class="text-3xl font-bold text-center text-white mb-2">Nano Banana</h1>
+                <p class="text-center text-neutral-400 mb-6">Sign in to start peeling pixels.</p>
+
+                <!-- Auth Tabs -->
+                <div class="flex bg-neutral-900/50 p-1 rounded-xl mb-6">
+                    <button id="tab-signin"
+                        class="flex-1 py-2 text-sm font-bold rounded-lg bg-yellow-400 text-neutral-900 shadow-lg transition-all">Sign
+                        In</button>
+                    <button id="tab-signup"
+                        class="flex-1 py-2 text-sm font-bold rounded-lg text-neutral-400 hover:text-white transition-all">Create
+                        Account</button>
+                </div>
+
+                <!-- Email Form -->
+                <form id="auth-form" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-neutral-500 uppercase mb-1">Email</label>
+                        <input type="email" id="email-input" required
+                            class="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white focus:border-yellow-400 outline-none transition-colors"
+                            placeholder="hello@example.com">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-neutral-500 uppercase mb-1">Password</label>
+                        <input type="password" id="password-input" required
+                            class="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white focus:border-yellow-400 outline-none transition-colors"
+                            placeholder="••••••••">
+                    </div>
+
+                    <button type="submit" id="submit-auth-btn"
+                        class="w-full bg-white text-neutral-900 font-bold h-12 rounded-xl flex items-center justify-center gap-2 hover:bg-neutral-200 transition-colors shadow-lg">
+                        <span id="auth-btn-text">Sign In</span>
+                        <div id="auth-loader" class="loader hidden"
+                            style="border-left-color: #000; border-color: rgba(0,0,0,0.1);"></div>
+                    </button>
+                </form>
+
+                <div class="relative my-6">
+                    <div class="absolute inset-0 flex items-center">
+                        <div class="w-full border-t border-neutral-700"></div>
+                    </div>
+                    <div class="relative flex justify-center text-xs uppercase"><span
+                            class="bg-neutral-800 px-2 text-neutral-500">Or continue with</span></div>
+                </div>
+
+                <button id="google-btn"
+                    class="w-full bg-neutral-900 border border-neutral-700 text-white font-bold h-12 rounded-xl flex items-center justify-center gap-3 hover:bg-neutral-700 transition-colors">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google"
+                        class="w-5 h-5">
+                    <span>Google</span>
+                </button>
+
+                <p id="auth-error" class="text-red-400 text-center text-sm mt-4 hidden"></p>
+            </div>
+        </div>
+
+        <!-- ==================== MAIN APP VIEW ==================== -->
+        <div id="main-view" class="hidden flex-col min-h-screen">
+            <!-- Header -->
+            <header class="border-b border-yellow-500/10 bg-neutral-900/50 backdrop-blur-md sticky top-0 z-20">
+                <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+                    <div class="flex items-center gap-2 group cursor-pointer" onclick="window.location.reload()">
+                        <div class="bg-yellow-400 p-1.5 rounded-lg group-hover:rotate-12 transition-transform">
+                            <i data-lucide="banana" class="w-5 h-5 text-neutral-900 fill-neutral-900"></i>
+                        </div>
+                        <h1 class="text-lg md:text-xl font-bold tracking-tight text-yellow-400 hidden sm:block">
+                            Nano<span class="text-white">Banana</span>
+                        </h1>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <!-- Credit Display -->
+                        <div id="buy-credits-btn"
+                            class="flex items-center gap-2 bg-neutral-800 hover:bg-neutral-700 border border-yellow-500/20 px-3 py-1.5 rounded-full cursor-pointer transition-colors group">
+                            <div class="bg-yellow-400/20 p-1 rounded-full">
+                                <i data-lucide="coins" class="w-4 h-4 text-yellow-400"></i>
+                            </div>
+                            <span id="credit-count" class="font-mono font-bold text-white">0</span>
+                            <div class="w-px h-4 bg-neutral-700 mx-1"></div>
+                            <span
+                                class="text-xs font-bold text-yellow-500 group-hover:text-yellow-400 uppercase">Buy</span>
+                        </div>
+
+                        <!-- Menu -->
+                        <div class="flex items-center gap-2 pl-2 border-l border-neutral-800">
+                            <button id="settings-btn"
+                                class="p-2 hover:bg-neutral-800 rounded-full transition-colors text-neutral-400 hover:text-white">
+                                <i data-lucide="settings" class="w-5 h-5"></i>
+                            </button>
+                            <button id="logout-btn"
+                                class="p-2 hover:bg-red-500/10 hover:text-red-400 rounded-full transition-colors text-neutral-400"
+                                title="Sign Out">
+                                <i data-lucide="log-out" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Content -->
+            <main class="flex-1 w-full max-w-6xl mx-auto px-4 py-6 flex flex-col lg:flex-row gap-6">
+
+                <!-- Left Panel: Controls -->
+                <div class="flex-1 flex flex-col gap-6 order-2 lg:order-1">
+                    <div class="space-y-1">
+                        <h2 id="mode-title" class="text-2xl font-bold text-white flex items-center gap-2">Generation
+                            Mode</h2>
+                        <p id="mode-desc" class="text-neutral-400 text-sm">Create new images from text.</p>
+                    </div>
+
+                    <div
+                        class="bg-neutral-800/40 border border-yellow-500/10 rounded-2xl p-4 md:p-6 shadow-xl backdrop-blur-sm space-y-6">
+
+                        <!-- Image Upload -->
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <label class="text-xs font-bold text-yellow-500 uppercase tracking-wider">Reference
+                                    Image</label>
+                                <button id="clear-upload-btn"
+                                    class="text-neutral-400 hover:text-red-400 text-xs flex items-center gap-1 hidden">
+                                    <i data-lucide="trash-2" class="w-3 h-3"></i> Remove
+                                </button>
+                            </div>
+
+                            <div id="upload-area"
+                                class="border-2 border-dashed border-neutral-700 hover:border-yellow-400/50 rounded-xl h-24 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all bg-neutral-900/30 group relative overflow-hidden">
+                                <div id="upload-placeholder" class="flex flex-col items-center">
+                                    <i data-lucide="upload"
+                                        class="w-6 h-6 text-neutral-500 group-hover:text-yellow-400 transition-colors"></i>
+                                    <p class="text-xs text-neutral-500 mt-1">Tap to upload for editing</p>
+                                </div>
+                                <img id="uploaded-preview"
+                                    class="hidden w-full h-full object-contain absolute inset-0 bg-neutral-900" />
+                                <input type="file" id="file-input" accept="image/png, image/jpeg" class="hidden" />
+                            </div>
+                        </div>
+
+                        <!-- Prompt -->
+                        <div>
+                            <label
+                                class="block text-xs font-bold text-yellow-500 mb-2 uppercase tracking-wider">Prompt</label>
+                            <textarea id="prompt-input" placeholder="A futuristic banana city..."
+                                class="w-full h-32 bg-neutral-900/50 border border-neutral-700 rounded-xl p-4 text-white placeholder-neutral-600 focus:outline-none focus:border-yellow-400/50 resize-none transition-all text-sm"></textarea>
+                        </div>
+
+                        <!-- Generate Button -->
+                        <button id="generate-btn"
+                            class="w-full h-14 rounded-xl font-bold flex items-center justify-center gap-2 bg-yellow-400 text-neutral-900 hover:bg-yellow-300 hover:shadow-[0_0_20px_rgba(250,204,21,0.3)] transform active:scale-95 transition-all">
+                            <i data-lucide="wand-2" class="w-5 h-5 btn-icon"></i>
+                            <div class="loader hidden btn-loader"
+                                style="border-left-color: #000; border-color: rgba(0,0,0,0.1);"></div>
+                            <span id="generate-btn-text">Generate (1 Nano)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Right Panel: Preview -->
+                <div
+                    class="flex-[1.5] order-1 lg:order-2 bg-neutral-950 rounded-3xl border-2 border-dashed border-neutral-800 flex flex-col items-center justify-center relative overflow-hidden min-h-[400px] group">
+
+                    <!-- Empty State -->
+                    <div id="preview-empty" class="text-center p-8 space-y-4 opacity-40">
+                        <div
+                            class="w-24 h-24 bg-neutral-900 rounded-full flex items-center justify-center mx-auto border border-neutral-800">
+                            <i data-lucide="image" class="w-10 h-10 text-neutral-600"></i>
+                        </div>
+                        <p class="text-neutral-500 font-medium text-lg">Ready to create</p>
+                    </div>
+
+                    <!-- Loading State -->
+                    <div id="preview-loading" class="hidden text-center p-8 space-y-4">
+                        <div class="loader w-10 h-10 border-4 text-yellow-400 mx-auto"></div>
+                        <p class="text-yellow-400 font-medium animate-pulse">Synthesizing Pixels...</p>
+                    </div>
+
+                    <!-- Image Result -->
+                    <img id="generated-image" class="hidden w-full h-full object-contain z-10 animate-fade-in" />
+
+                    <!-- Hover Actions -->
+                    <div id="preview-actions"
+                        class="hidden absolute inset-0 bg-gradient-to-t from-neutral-900/90 via-transparent to-transparent z-20 flex items-end justify-center pb-8 gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button id="download-btn"
+                            class="flex items-center gap-2 px-6 py-3 bg-white text-neutral-900 rounded-full hover:bg-yellow-400 transition-colors shadow-lg font-bold">
+                            <i data-lucide="download" class="w-5 h-5"></i> Save
+                        </button>
+                    </div>
+
+                    <!-- Error Toast -->
+                    <div id="error-toast"
+                        class="hidden absolute bottom-4 left-4 right-4 bg-red-500/10 border border-red-500/50 text-red-200 p-4 rounded-xl flex items-center gap-3 backdrop-blur-md z-30 animate-slide-up">
+                        <i data-lucide="alert-circle" class="w-5 h-5 flex-shrink-0"></i>
+                        <p id="error-msg" class="text-sm font-medium">Error message here</p>
+                        <button onclick="document.getElementById('error-toast').classList.add('hidden')"
+                            class="ml-auto hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+                    </div>
+
+                    <!-- Success Toast -->
+                    <div id="success-toast"
+                        class="hidden absolute top-4 left-1/2 -translate-x-1/2 bg-green-500/20 border border-green-500/50 text-green-200 px-6 py-3 rounded-full flex items-center gap-2 backdrop-blur-md z-30 animate-fade-in">
+                        <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+                        <p id="success-msg" class="text-sm font-bold">Operation Successful</p>
+                    </div>
+                </div>
+            </main>
+
+            <footer class="py-6 text-center text-neutral-600 text-xs">
+                <p>© 2024 Nano Banana. Secured by Firebase & Paystack.</p>
+            </footer>
+        </div>
+
+        <!-- ==================== MODALS ==================== -->
+
+        <!-- Payment Modal -->
+        <div id="payment-modal"
+            class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+            <div class="bg-neutral-900 border border-yellow-500/30 w-full max-w-md rounded-2xl p-6 shadow-2xl relative">
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <h3 class="text-2xl font-bold text-white flex items-center gap-2">Top Up Nano <i
+                                data-lucide="coins" class="text-yellow-400 w-5 h-5"></i></h3>
+                        <p class="text-neutral-400 text-sm mt-1">Get credits to generate more images.</p>
+                    </div>
+                    <button id="close-payment-btn" class="text-neutral-500 hover:text-white"><i data-lucide="x"
+                            class="w-6 h-6"></i></button>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="bg-neutral-800/50 rounded-xl p-4 border border-neutral-700">
+                        <label class="text-xs text-neutral-400 uppercase tracking-wider font-bold mb-2 block">Select
+                            Amount</label>
+                        <div class="grid grid-cols-3 gap-3">
+                            <button onclick="selectAmount(10)"
+                                class="amount-btn py-3 rounded-lg font-bold text-sm bg-neutral-800 text-neutral-300 border border-neutral-700 hover:bg-neutral-700 transition-all"
+                                data-val="10">10 Nano</button>
+                            <button onclick="selectAmount(20)"
+                                class="amount-btn py-3 rounded-lg font-bold text-sm bg-neutral-800 text-neutral-300 border border-neutral-700 hover:bg-neutral-700 transition-all"
+                                data-val="20">20 Nano</button>
+                            <button onclick="selectAmount(50)"
+                                class="amount-btn py-3 rounded-lg font-bold text-sm bg-neutral-800 text-neutral-300 border border-neutral-700 hover:bg-neutral-700 transition-all"
+                                data-val="50">50 Nano</button>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center py-4 border-t border-neutral-800">
+                        <span class="text-neutral-400">Price per Nano</span>
+                        <span class="text-white font-mono">₦100</span>
+                    </div>
+
+                    <div class="flex justify-between items-center py-2">
+                        <span class="text-xl font-bold text-white">Total</span>
+                        <span id="payment-total" class="text-3xl font-bold text-yellow-400">₦0</span>
+                    </div>
+
+                    <button id="paystack-btn"
+                        class="w-full bg-green-500 hover:bg-green-400 text-white h-14 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg hover:scale-[1.02] transition-transform">
+                        <i data-lucide="credit-card" class="w-5 h-5"></i> Pay Now with Paystack
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settings-modal"
+            class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+            <div class="bg-neutral-900 border border-neutral-700 w-full max-w-md rounded-2xl p-6 shadow-2xl">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2"><i data-lucide="settings"
+                            class="w-5 h-5 text-yellow-400"></i> Settings</h3>
+                    <button onclick="document.getElementById('settings-modal').classList.add('hidden')"
+                        class="text-neutral-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="flex items-center gap-3 p-3 bg-neutral-800 rounded-xl">
+                        <div class="w-10 h-10 bg-neutral-700 rounded-full flex items-center justify-center text-white font-bold"
+                            id="user-avatar">U</div>
+                        <div>
+                            <p id="user-name" class="text-sm font-bold text-white">User</p>
+                            <p id="user-email" class="text-xs text-neutral-400">email@example.com</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-neutral-400 mb-1 uppercase">Custom Google API
+                            Key</label>
+                        <input type="password" id="custom-api-key" placeholder="Paste your AIzaSy... key here"
+                            class="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-3 text-sm text-white focus:ring-1 focus:ring-yellow-400 outline-none">
+                        <p class="text-xs text-neutral-500 mt-2">Overrides default key for generation.</p>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end">
+                    <button onclick="saveSettings()"
+                        class="bg-yellow-400 text-neutral-900 px-4 py-2 rounded-lg font-semibold hover:bg-yellow-300 text-sm">Save
+                        & Close</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getAuth, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+        // --- Configuration ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyAwi-x6zG01qxonURhflnGPTz6fhtFQVUw",
+            authDomain: "vantflowv1.firebaseapp.com",
+            projectId: "vantflowv1",
+            storageBucket: "vantflowv1.firebasestorage.app",
+            messagingSenderId: "1047381509296",
+            appId: "1:1047381509296:web:d834083441fb015a9f2775",
+            measurementId: "G-JPEWFMF61Y",
+            databaseURL: "https://vantflowv1-default-rtdb.firebaseio.com"
+        };
+
+        const PAYSTACK_PUBLIC_KEY = "pk_live_4d609974f9080d629d43b0a8b4f2a01d54159140";
+        // Key for Generative Language API (Imagen/Gemini)
+        const DEFAULT_GEN_API_KEY = "AIzaSyCDhKRMWGHZRfAYB5nc6RSb60ffvW6RF4E";
+
+        const APP_ID = "nano-banana-v1";
+        const COST_PER_GEN = 1;
+        const PRICE_PER_NANO = 1000;
+
+        // --- Init ---
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        let currentUser = null;
+        let credits = 0;
+        let currentAmount = 10; // Default buy amount
+        let uploadedImageBase64 = null;
+        let uploadedImageMime = null;
+        let authMode = 'signin'; // 'signin' or 'signup'
+
+        // --- UI Elements ---
+        const views = {
+            auth: document.getElementById('auth-view'),
+            main: document.getElementById('main-view')
+        };
+        const els = {
+            creditCount: document.getElementById('credit-count'),
+            buyBtn: document.getElementById('buy-credits-btn'),
+            paymentModal: document.getElementById('payment-modal'),
+            paystackBtn: document.getElementById('paystack-btn'),
+            closePaymentBtn: document.getElementById('close-payment-btn'),
+            paymentTotal: document.getElementById('payment-total'),
+            settingsBtn: document.getElementById('settings-btn'),
+            settingsModal: document.getElementById('settings-modal'),
+            logoutBtn: document.getElementById('logout-btn'),
+            userName: document.getElementById('user-name'),
+            userEmail: document.getElementById('user-email'),
+            userAvatar: document.getElementById('user-avatar'),
+            customKeyInput: document.getElementById('custom-api-key'),
+            promptInput: document.getElementById('prompt-input'),
+            generateBtn: document.getElementById('generate-btn'),
+            generateBtnText: document.getElementById('generate-btn-text'),
+            generateLoader: document.querySelector('.btn-loader'),
+            generateIcon: document.querySelector('.btn-icon'),
+            previewEmpty: document.getElementById('preview-empty'),
+            previewLoading: document.getElementById('preview-loading'),
+            generatedImage: document.getElementById('generated-image'),
+            previewActions: document.getElementById('preview-actions'),
+            downloadBtn: document.getElementById('download-btn'),
+            fileInput: document.getElementById('file-input'),
+            uploadArea: document.getElementById('upload-area'),
+            uploadedPreview: document.getElementById('uploaded-preview'),
+            uploadPlaceholder: document.getElementById('upload-placeholder'),
+            clearUploadBtn: document.getElementById('clear-upload-btn'),
+            modeTitle: document.getElementById('mode-title'),
+            modeDesc: document.getElementById('mode-desc'),
+            authForm: document.getElementById('auth-form'),
+            emailInput: document.getElementById('email-input'),
+            passInput: document.getElementById('password-input'),
+            submitAuthBtn: document.getElementById('submit-auth-btn'),
+            authBtnText: document.getElementById('auth-btn-text'),
+            authLoader: document.getElementById('auth-loader'),
+            authError: document.getElementById('auth-error'),
+            googleBtn: document.getElementById('google-btn'),
+            tabSignin: document.getElementById('tab-signin'),
+            tabSignup: document.getElementById('tab-signup')
+        };
+
+        // --- Auth Logic ---
+
+        // Tab Switching
+        els.tabSignin.onclick = () => setAuthMode('signin');
+        els.tabSignup.onclick = () => setAuthMode('signup');
+
+        function setAuthMode(mode) {
+            authMode = mode;
+            els.authError.classList.add('hidden');
+            if (mode === 'signin') {
+                els.tabSignin.classList.add('bg-yellow-400', 'text-neutral-900', 'shadow-lg');
+                els.tabSignin.classList.remove('text-neutral-400');
+                els.tabSignup.classList.remove('bg-yellow-400', 'text-neutral-900', 'shadow-lg');
+                els.tabSignup.classList.add('text-neutral-400');
+                els.authBtnText.innerText = "Sign In";
+            } else {
+                els.tabSignup.classList.add('bg-yellow-400', 'text-neutral-900', 'shadow-lg');
+                els.tabSignup.classList.remove('text-neutral-400');
+                els.tabSignin.classList.remove('bg-yellow-400', 'text-neutral-900', 'shadow-lg');
+                els.tabSignin.classList.add('text-neutral-400');
+                els.authBtnText.innerText = "Create Account";
+            }
+        }
+
+        // Email Auth
+        els.authForm.onsubmit = async (e) => {
+            e.preventDefault();
+            const email = els.emailInput.value;
+            const password = els.passInput.value;
+
+            setAuthLoading(true);
+            try {
+                if (authMode === 'signup') {
+                    await createUserWithEmailAndPassword(auth, email, password);
+                } else {
+                    await signInWithEmailAndPassword(auth, email, password);
+                }
+            } catch (error) {
+                showAuthError(error.message);
+                setAuthLoading(false);
+            }
+        };
+
+        // Google Auth
+        els.googleBtn.onclick = async () => {
+            try {
+                const provider = new GoogleAuthProvider();
+                await signInWithPopup(auth, provider);
+            } catch (error) {
+                showAuthError(error.message);
+            }
+        };
+
+        function setAuthLoading(loading) {
+            els.submitAuthBtn.disabled = loading;
+            if (loading) {
+                els.authBtnText.classList.add('hidden');
+                els.authLoader.classList.remove('hidden');
+            } else {
+                els.authBtnText.classList.remove('hidden');
+                els.authLoader.classList.add('hidden');
+            }
+        }
+
+        function showAuthError(msg) {
+            els.authError.innerText = msg.replace('Firebase: ', '');
+            els.authError.classList.remove('hidden');
+        }
+
+        els.logoutBtn.onclick = () => signOut(auth);
+
+        // --- App State Listener ---
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                // Update UI for User
+                views.auth.classList.add('hidden');
+                views.main.classList.remove('hidden');
+                views.main.classList.add('flex');
+
+                els.userName.innerText = user.displayName || 'User';
+                els.userEmail.innerText = user.email;
+                if (user.photoURL) {
+                    els.userAvatar.innerHTML = `<img src="${user.photoURL}" class="w-full h-full rounded-full">`;
+                } else {
+                    els.userAvatar.innerHTML = user.email.charAt(0).toUpperCase();
+                }
+
+                // Firestore Sync
+                const userRef = doc(db, 'artifacts', APP_ID, 'users', user.uid, 'account', 'balance');
+                const snap = await getDoc(userRef);
+                if (!snap.exists()) {
+                    await setDoc(userRef, { credits: 0, email: user.email });
+                }
+                onSnapshot(userRef, (doc) => {
+                    credits = doc.data()?.credits || 0;
+                    els.creditCount.innerText = credits;
+                    els.creditCount.className = credits < 1 ? 'font-mono font-bold text-red-400' : 'font-mono font-bold text-white';
+                });
+
+            } else {
+                currentUser = null;
+                views.auth.classList.remove('hidden');
+                views.main.classList.add('hidden');
+                views.main.classList.remove('flex');
+                setAuthLoading(false);
+            }
+        });
+
+        // --- Payment Logic ---
+        els.buyBtn.onclick = () => els.paymentModal.classList.remove('hidden');
+        els.closePaymentBtn.onclick = () => els.paymentModal.classList.add('hidden');
+
+        // Expose function to window for the onclick in HTML
+        window.selectAmount = (amount) => {
+            currentAmount = amount;
+            els.paymentTotal.innerText = `₦${(amount * PRICE_PER_NANO).toLocaleString()}`;
+            // Highlight button
+            document.querySelectorAll('.amount-btn').forEach(btn => {
+                if (parseInt(btn.dataset.val) === amount) {
+                    btn.classList.add('bg-yellow-400', 'text-neutral-900', 'shadow-lg');
+                    btn.classList.remove('bg-neutral-800', 'text-neutral-300', 'border');
+                } else {
+                    btn.classList.remove('bg-yellow-400', 'text-neutral-900', 'shadow-lg');
+                    btn.classList.add('bg-neutral-800', 'text-neutral-300', 'border');
+                }
+            });
+        };
+        // Init default selection
+        window.selectAmount(10);
+
+        els.paystackBtn.onclick = () => {
+            if (!currentUser) return;
+            const handler = PaystackPop.setup({
+                key: PAYSTACK_PUBLIC_KEY,
+                email: currentUser.email,
+                amount: currentAmount * PRICE_PER_NANO * 100, // In Kobo
+                currency: 'NGN',
+                metadata: { custom_fields: [{ display_name: "Nano Credits", variable_name: "nano_credits", value: currentAmount }] },
+                callback: async function (response) {
+                    // Update Firestore Optimistically
+                    const userRef = doc(db, 'artifacts', APP_ID, 'users', currentUser.uid, 'account', 'balance');
+                    await updateDoc(userRef, { credits: increment(currentAmount) });
+                    els.paymentModal.classList.add('hidden');
+                    showToast('success', `Added ${currentAmount} Nano!`);
+                }
+            });
+            handler.openIframe();
+        };
+
+        // --- Image Upload Logic ---
+        els.uploadArea.onclick = () => els.fileInput.click();
+        els.fileInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    uploadedImageBase64 = reader.result.split(',')[1];
+                    uploadedImageMime = reader.result.split(';')[0].split(':')[1];
+
+                    els.uploadedPreview.src = reader.result;
+                    els.uploadedPreview.classList.remove('hidden');
+                    els.uploadPlaceholder.classList.add('hidden');
+                    els.clearUploadBtn.classList.remove('hidden');
+
+                    // Update Mode UI
+                    els.modeTitle.innerText = "Edit Mode";
+                    els.modeDesc.innerText = "Describe how to change the image.";
+                    els.generateBtnText.innerText = `Edit (${COST_PER_GEN} Nano)`;
+                    els.promptInput.placeholder = "Make the background a cyberpunk city...";
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+
+        els.clearUploadBtn.onclick = (e) => {
+            e.stopPropagation(); // Prevent opening file dialog
+            uploadedImageBase64 = null;
+            els.uploadedPreview.classList.add('hidden');
+            els.uploadPlaceholder.classList.remove('hidden');
+            els.clearUploadBtn.classList.add('hidden');
+            els.fileInput.value = '';
+
+            // Revert Mode UI
+            els.modeTitle.innerText = "Generation Mode";
+            els.modeDesc.innerText = "Create new images from text.";
+            els.generateBtnText.innerText = `Generate (${COST_PER_GEN} Nano)`;
+            els.promptInput.placeholder = "A futuristic banana city...";
+        };
+
+        // --- Generation Logic ---
+        els.generateBtn.onclick = async () => {
+            const prompt = els.promptInput.value.trim();
+            if (!prompt) return showToast('error', 'Please enter a prompt');
+
+            // Credit Check
+            if (credits < COST_PER_GEN) {
+                els.paymentModal.classList.remove('hidden');
+                return;
+            }
+
+            // Set UI Loading
+            els.generateBtn.disabled = true;
+            els.generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            els.generateIcon.classList.add('hidden');
+            els.generateLoader.classList.remove('hidden');
+            els.generateBtnText.innerText = "Processing...";
+
+            els.previewEmpty.classList.add('hidden');
+            els.generatedImage.classList.add('hidden');
+            els.previewActions.classList.add('hidden');
+            els.previewLoading.classList.remove('hidden');
+
+            try {
+                // Deduct Cost
+                const userRef = doc(db, 'artifacts', APP_ID, 'users', currentUser.uid, 'account', 'balance');
+                await updateDoc(userRef, { credits: increment(-COST_PER_GEN) });
+
+                // Prepare API
+                const customKey = els.customKeyInput.value.trim();
+                const activeKey = customKey || DEFAULT_GEN_API_KEY;
+
+                let url, payload, isEdit = !!uploadedImageBase64;
+
+                if (isEdit) {
+                    url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${activeKey}`;
+                    payload = {
+                        contents: [{
+                            parts: [
+                                { text: prompt },
+                                { inlineData: { mimeType: uploadedImageMime, data: uploadedImageBase64 } }
+                            ]
+                        }],
+                        // Instruction says responseModalities: ['TEXT', 'IMAGE'] for editing
+                        generationConfig: { responseModalities: ['TEXT', 'IMAGE'] }
+                    };
+                } else {
+                    // Use imagen-4.0-generate-001
+                    url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${activeKey}`;
+                    payload = {
+                        instances: [{ prompt: prompt }],
+                        parameters: { sampleCount: 1 }
+                    };
+                }
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) throw new Error(`API Error: ${response.status}`);
+
+                const result = await response.json();
+                let finalImageBase64;
+
+                if (isEdit) {
+                    finalImageBase64 = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+                } else {
+                    finalImageBase64 = result.predictions?.[0]?.bytesBase64Encoded;
+                }
+
+                if (!finalImageBase64) throw new Error("No image data returned.");
+
+                const finalSrc = `data:image/png;base64,${finalImageBase64}`;
+
+                // Show Result
+                els.generatedImage.src = finalSrc;
+                els.generatedImage.classList.remove('hidden');
+                els.previewActions.classList.remove('hidden');
+
+                // Setup Download
+                els.downloadBtn.onclick = () => {
+                    const link = document.createElement('a');
+                    link.href = finalSrc;
+                    link.download = `nano-banana-${Date.now()}.png`;
+                    link.click();
+                };
+
+            } catch (err) {
+                console.error(err);
+                showToast('error', err.message || "Generation Failed");
+                // Refund
+                const userRef = doc(db, 'artifacts', APP_ID, 'users', currentUser.uid, 'account', 'balance');
+                await updateDoc(userRef, { credits: increment(COST_PER_GEN) });
+            } finally {
+                // Reset UI
+                els.previewLoading.classList.add('hidden');
+                els.generateBtn.disabled = false;
+                els.generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                els.generateIcon.classList.remove('hidden');
+                els.generateLoader.classList.add('hidden');
+                els.generateBtnText.innerText = uploadedImageBase64 ? `Edit (${COST_PER_GEN} Nano)` : `Generate (${COST_PER_GEN} Nano)`;
+            }
+        };
+
+        // --- Utils ---
+        function showToast(type, msg) {
+            if (type === 'error') {
+                document.getElementById('error-msg').innerText = msg;
+                document.getElementById('error-toast').classList.remove('hidden');
+                setTimeout(() => document.getElementById('error-toast').classList.add('hidden'), 5000);
+            } else {
+                document.getElementById('success-msg').innerText = msg;
+                document.getElementById('success-toast').classList.remove('hidden');
+                setTimeout(() => document.getElementById('success-toast').classList.add('hidden'), 3000);
+            }
+        }
+
+        // Global functions for Settings Modal
+        window.saveSettings = () => {
+            // Just closes modal as key is read dynamically from input
+            els.settingsModal.classList.add('hidden');
+        };
+
+        els.settingsBtn.onclick = () => els.settingsModal.classList.remove('hidden');
+
+        // Init Icons
+        lucide.createIcons();
+
+    </script>
 </body>
+
 </html>
