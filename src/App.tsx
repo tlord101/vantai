@@ -17,6 +17,78 @@ function App() {
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [showSubscriptionPage, setShowSubscriptionPage] = useState(false);
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Load subscription data - hooks must be at top level
+  useEffect(() => {
+    if (currentUser && !isAdmin) {
+      loadSubscription();
+    }
+  }, [currentUser, isAdmin]);
+
+  // Load chat history on mount
+  useEffect(() => {
+    if (currentUser && !isAdmin) {
+      setMessages(loadChatHistory());
+    }
+  }, [currentUser, isAdmin]);
+
+  // Auto-scroll and save chat history
+  useEffect(() => {
+    scrollToBottom();
+    if (currentUser && messages.length > 0) {
+      try {
+        localStorage.setItem(`chat_history_${currentUser.uid}`, JSON.stringify(messages));
+      } catch (error) {
+        console.error('Error saving chat history:', error);
+      }
+    }
+  }, [messages, currentUser]);
+
+  const loadSubscription = async () => {
+    if (!currentUser) return;
+    setSubscriptionLoading(true);
+    const sub = await subscriptionService.getUserSubscription(currentUser.uid);
+    setSubscription(sub);
+    
+    // Show subscription page if user has no active subscription
+    if (sub && sub.plan === 'free') {
+      setShowSubscriptionPage(true);
+    } else if (sub && new Date() > sub.endDate) {
+      // Subscription expired
+      setShowSubscriptionPage(true);
+    }
+    setSubscriptionLoading(false);
+  };
+
+  const loadChatHistory = (): Message[] => {
+    try {
+      const saved = localStorage.getItem(`chat_history_${currentUser?.uid}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed.map((msg: any) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp),
+        }));
+      }
+    } catch (error) {
+      console.error('Error loading chat history:', error);
+    }
+    return [
+      {
+        id: '1',
+        text: '🎨 Welcome to VanTai AI Image Generator! Powered by Google Imagen 3 (gemini-3-pro-image-preview).\n\n✨ Create stunning images:\n• Text-to-image: Describe what you want to see\n• Image-to-image: Upload a reference and describe edits\n\nExample prompts:\n"A serene mountain landscape at sunset with dramatic clouds"\n"Make this photo look vintage with warm sepia tones"\n"Add dramatic studio lighting to enhance this portrait"',
+        sender: 'ai',
+        timestamp: new Date(),
+      },
+    ];
+  };
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
   
   // Show auth page if not logged in
   if (!currentUser) {
@@ -41,29 +113,6 @@ function App() {
       </div>
     );
   }
-
-  // Load subscription data
-  useEffect(() => {
-    if (currentUser) {
-      loadSubscription();
-    }
-  }, [currentUser]);
-
-  const loadSubscription = async () => {
-    if (!currentUser) return;
-    setSubscriptionLoading(true);
-    const sub = await subscriptionService.getUserSubscription(currentUser.uid);
-    setSubscription(sub);
-    
-    // Show subscription page if user has no active subscription
-    if (sub && sub.plan === 'free') {
-      setShowSubscriptionPage(true);
-    } else if (sub && new Date() > sub.endDate) {
-      // Subscription expired
-      setShowSubscriptionPage(true);
-    }
-    setSubscriptionLoading(false);
-  };
 
   // Show subscription page
   if (subscriptionLoading) {
@@ -97,49 +146,6 @@ function App() {
       </div>
     );
   }
-  // Load chat history from localStorage
-  const loadChatHistory = (): Message[] => {
-    try {
-      const saved = localStorage.getItem(`chat_history_${currentUser?.uid}`);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return parsed.map((msg: any) => ({
-          ...msg,
-          timestamp: new Date(msg.timestamp),
-        }));
-      }
-    } catch (error) {
-      console.error('Error loading chat history:', error);
-    }
-    return [
-      {
-        id: '1',
-        text: '🎨 Welcome to VanTai AI Image Generator! Powered by Google Imagen 3 (gemini-3-pro-image-preview).\n\n✨ Create stunning images:\n• Text-to-image: Describe what you want to see\n• Image-to-image: Upload a reference and describe edits\n\nExample prompts:\n"A serene mountain landscape at sunset with dramatic clouds"\n"Make this photo look vintage with warm sepia tones"\n"Add dramatic studio lighting to enhance this portrait"',
-        sender: 'ai',
-        timestamp: new Date(),
-      },
-    ];
-  };
-
-  const [messages, setMessages] = useState<Message[]>(loadChatHistory);
-  const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-    // Save chat history to localStorage
-    if (currentUser) {
-      try {
-        localStorage.setItem(`chat_history_${currentUser.uid}`, JSON.stringify(messages));
-      } catch (error) {
-        console.error('Error saving chat history:', error);
-      }
-    }
-  }, [messages, currentUser]);
 
   const handleSendMessage = async (text: string, image?: File) => {
     if (!currentUser) return;
