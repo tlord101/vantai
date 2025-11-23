@@ -235,6 +235,7 @@ const NanoBananaApp = () => {
   const [generatedImage, setGeneratedImage] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState(null);
+  const [progress, setProgress] = useState(0);
   
   // UI State
   const [showSettings, setShowSettings] = useState(false);
@@ -246,9 +247,7 @@ const NanoBananaApp = () => {
   const apiKey = "AIzaSyDVRaBh8YkiFoDG2GDt9szZVSypM6AyO0s"; 
   
   const fileInputRef = useRef(null);
-  const debounceTimeoutRef = useRef(null);
   const isRequestInProgressRef = useRef(false);
-  const lastRequestTimeRef = useRef(0);
 
   // --- Effects ---
 
@@ -353,23 +352,9 @@ const NanoBananaApp = () => {
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
 
-    // Clear any pending debounced requests
-    if (debounceTimeoutRef.current) {
-      clearTimeout(debounceTimeoutRef.current);
-    }
-
-    // Check if a request is already in progress
-    if (isRequestInProgressRef.current) {
-      setError('Please wait for the current request to complete');
-      return;
-    }
-
-    // Rate limiting: enforce minimum 2 seconds between requests
-    const now = Date.now();
-    const timeSinceLastRequest = now - lastRequestTimeRef.current;
-    if (timeSinceLastRequest < 2000) {
-      const waitTime = Math.ceil((2000 - timeSinceLastRequest) / 1000);
-      setError(`Please wait ${waitTime} second${waitTime > 1 ? 's' : ''} before making another request`);
+    // CRITICAL: Prevent duplicate calls
+    if (isRequestInProgressRef.current || isGenerating) {
+      console.log('Request already in progress, ignoring duplicate call');
       return;
     }
 
@@ -379,19 +364,24 @@ const NanoBananaApp = () => {
       return;
     }
 
+    // Set flags IMMEDIATELY before any async operations
+    isRequestInProgressRef.current = true;
     setIsGenerating(true);
     setError(null);
     setGeneratedImage(null);
-    isRequestInProgressRef.current = true;
-    lastRequestTimeRef.current = now;
+    setProgress(10);
 
     // 2. Deduct Credit Optimistically
     const userRef = doc(db, 'artifacts', appId, 'users', user.uid, 'account', 'balance');
     try {
+      setProgress(20);
       await updateDoc(userRef, { credits: increment(-COST_PER_GEN) });
+      setProgress(30);
     } catch (err) {
       setError("Failed to process transaction.");
       setIsGenerating(false);
+      isRequestInProgressRef.current = false;
+      setProgress(0);
       return;
     }
 
@@ -426,6 +416,7 @@ const NanoBananaApp = () => {
 
     const makeRequest = async (retryCount = 0) => {
       try {
+        setProgress(50 + (retryCount * 10));
         const response = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -451,7 +442,9 @@ const NanoBananaApp = () => {
         }
 
         if (base64Image) {
+          setProgress(90);
           setGeneratedImage(`data:image/png;base64,${base64Image}`);
+          setProgress(100);
         } else {
           throw new Error("Unexpected response format. No image data found.");
         }
@@ -480,19 +473,14 @@ const NanoBananaApp = () => {
       }
     };
 
-    await makeRequest();
-    setIsGenerating(false);
-    isRequestInProgressRef.current = false;
+    try {
+      await makeRequest();
+    } finally {
+      setIsGenerating(false);
+      isRequestInProgressRef.current = false;
+      setTimeout(() => setProgress(0), 1000);
+    }
   };
-
-  // Cleanup debounce timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
-      }
-    };
-  }, []);
 
   const handleDownload = () => {
     if (generatedImage) {
@@ -647,17 +635,25 @@ const NanoBananaApp = () => {
                   : 'bg-yellow-400 text-neutral-900 hover:bg-yellow-300 hover:shadow-[0_0_20px_rgba(250,204,21,0.3)] transform hover:-translate-y-0.5'
               }`}
             >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <Wand2 className="w-5 h-5" />
-                  {uploadedImage ? `Edit (${COST_PER_GEN} Nano)` : `Generate (${COST_PER_GEN} Nano)`}
-                </>
+              {isGenerating && (
+                <div 
+                  className="absolute left-0 top-0 h-full bg-yellow-500/20 transition-all duration-500 ease-out"
+                  style={{ width: `${progress}%` }}
+                />
               )}
+              <span className="relative z-10 flex items-center gap-2">
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Processing... {progress}%
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="w-5 h-5" />
+                    {uploadedImage ? `Edit (${COST_PER_GEN} Nano)` : `Generate (${COST_PER_GEN} Nano)`}
+                  </>
+                )}
+              </span>
             </button>
           </div>
         </div>
@@ -681,9 +677,14 @@ const NanoBananaApp = () => {
                   </button>
                   <button 
                     onClick={handleGenerate}
-                    className="flex items-center gap-2 px-6 py-3 bg-neutral-800 text-white rounded-full hover:bg-neutral-700 transition-colors shadow-lg border border-neutral-700 font-bold"
+                    disabled={isGenerating}
+                    className={`flex items-center gap-2 px-6 py-3 rounded-full transition-colors shadow-lg border font-bold ${
+                      isGenerating 
+                        ? 'bg-neutral-900 text-neutral-600 border-neutral-800 cursor-not-allowed'
+                        : 'bg-neutral-800 text-white border-neutral-700 hover:bg-neutral-700'
+                    }`}
                   >
-                    <RefreshCw className="w-5 h-5" /> Retry
+                    <RefreshCw className={`w-5 h-5 ${isGenerating ? 'animate-spin' : ''}`} /> Retry
                   </button>
               </div>
             </>
