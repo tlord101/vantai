@@ -635,15 +635,16 @@
             const handler = PaystackPop.setup({
                 key: PAYSTACK_PUBLIC_KEY,
                 email: currentUser.email,
-                amount: currentAmount * PRICE_PER_NANO * 1000, // In Kobo
+                amount: currentAmount * PRICE_PER_NANO * 100, // In Kobo
                 currency: 'NGN',
                 metadata: { custom_fields: [{ display_name: "Nano Credits", variable_name: "nano_credits", value: currentAmount }] },
-                callback: async function (response) {
-                    // Update Firestore Optimistically
+                callback: function (response) {
+                    // Update Firestore (non-async in callback)
                     const userRef = doc(db, 'artifacts', APP_ID, 'users', currentUser.uid, 'account', 'balance');
-                    await updateDoc(userRef, { credits: increment(currentAmount) });
-                    els.paymentModal.classList.add('hidden');
-                    showToast('success', `Added ${currentAmount} Nano!`);
+                    updateDoc(userRef, { credits: increment(currentAmount) }).then(() => {
+                        els.paymentModal.classList.add('hidden');
+                        showToast('success', `Added ${currentAmount} Nano!`);
+                    });
                 }
             });
             handler.openIframe();
