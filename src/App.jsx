@@ -51,7 +51,7 @@ const appId = "nano-banana-v1"; // Internal App ID for Firestore pathing
 // Pricing Constants
 const COST_PER_GEN = 1;
 const MIN_BUY_AMOUNT = 10;
-const PRICE_PER_NANO_NGN = 100; // Example: 1 Nano = 100 Naira
+const PRICE_PER_NANO_NGN = 1000; // 1 Nano = 1000 Naira
 
 // --- Components ---
 
@@ -100,34 +100,48 @@ const PaymentModal = ({ onClose, onSuccess, userEmail }) => {
   const [processing, setProcessing] = useState(false);
 
   const handlePay = () => {
+    if (!window.PaystackPop) {
+      alert('Paystack is not loaded. Please refresh the page and try again.');
+      setProcessing(false);
+      return;
+    }
+
     setProcessing(true);
     const costInKobo = amount * PRICE_PER_NANO_NGN * 100; // Paystack works in Kobo
 
-    const handler = window.PaystackPop.setup({
-      key: PAYSTACK_PUBLIC_KEY,
-      email: userEmail,
-      amount: costInKobo,
-      currency: 'NGN',
-      ref: '' + Math.floor((Math.random() * 1000000000) + 1),
-      metadata: {
-        custom_fields: [
-          {
-            display_name: "Nano Credits",
-            variable_name: "nano_credits",
-            value: amount
-          }
-        ]
-      },
-      callback: function(response) {
-        setProcessing(false);
-        onSuccess(amount, response.reference);
-      },
-      onClose: function() {
-        setProcessing(false);
-      }
-    });
+    try {
+      const handler = window.PaystackPop.setup({
+        key: PAYSTACK_PUBLIC_KEY,
+        email: userEmail,
+        amount: costInKobo,
+        currency: 'NGN',
+        ref: 'nano-' + Date.now() + '-' + Math.floor((Math.random() * 1000000)),
+        metadata: {
+          custom_fields: [
+            {
+              display_name: "Nano Credits",
+              variable_name: "nano_credits",
+              value: amount
+            }
+          ]
+        },
+        callback: function(response) {
+          console.log('Payment successful:', response);
+          setProcessing(false);
+          onSuccess(amount, response.reference);
+        },
+        onClose: function() {
+          console.log('Payment window closed');
+          setProcessing(false);
+        }
+      });
 
-    handler.openIframe();
+      handler.openIframe();
+    } catch (error) {
+      console.error('Paystack error:', error);
+      alert('Payment initialization failed. Please try again.');
+      setProcessing(false);
+    }
   };
 
   return (
@@ -227,19 +241,6 @@ const NanoBananaApp = () => {
   const fileInputRef = useRef(null);
 
   // --- Effects ---
-
-  // Load Paystack Script
-  useEffect(() => {
-    const script = document.createElement("script");
-    script.src = "https://js.paystack.co/v1/inline.js";
-    script.async = true;
-    document.body.appendChild(script);
-    return () => {
-      if(document.body.contains(script)) {
-        document.body.removeChild(script);
-      }
-    };
-  }, []);
 
   // Auth & Firestore Listener
   useEffect(() => {
