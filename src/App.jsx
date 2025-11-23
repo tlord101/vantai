@@ -235,7 +235,6 @@ const NanoBananaApp = () => {
   const [generatedImage, setGeneratedImage] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState(null);
-  const [lastRequestTime, setLastRequestTime] = useState(0);
   
   // UI State
   const [showSettings, setShowSettings] = useState(false);
@@ -249,6 +248,7 @@ const NanoBananaApp = () => {
   const fileInputRef = useRef(null);
   const debounceTimeoutRef = useRef(null);
   const isRequestInProgressRef = useRef(false);
+  const lastRequestTimeRef = useRef(0);
 
   // --- Effects ---
 
