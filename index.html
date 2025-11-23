@@ -10,7 +10,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
 
     <!-- Paystack JS -->
-    <script src="https://js.paystack.co/v1/inline.js" crossorigin="anonymous"></script>
+    <script src="https://js.paystack.co/v1/inline.js" crossorigin="anonymous" async></script>
 
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -628,6 +628,10 @@
 
         els.paystackBtn.onclick = () => {
             if (!currentUser) return;
+            if (typeof PaystackPop === 'undefined') {
+                showToast('error', 'Payment system loading... Please try again.');
+                return;
+            }
             const handler = PaystackPop.setup({
                 key: PAYSTACK_PUBLIC_KEY,
                 email: currentUser.email,
