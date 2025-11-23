@@ -1,74 +1,18 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    function isAuthenticated() {
-      return request.auth != null;
+    // Subscriptions collection
+    match /subscriptions/{userId} {
+      // Users can read their own subscription
+      allow read: if request.auth != null && request.auth.uid == userId;
+      
+      // Users can create/update their own subscription
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
     
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-    
-    function isAdmin() {
-      return isAuthenticated() && request.auth.token.admin == true;
-    }
-    
-    // Users
-    match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin();
-      allow write: if isOwner(userId);
-    }
-    
-    // Billing (server-side only)
-    match /billing/{docId} {
-      allow read: if isOwner(resource.data.userId) || isAdmin();
-      allow write: if false;
-    }
-    
-    // Subscriptions (server-side only)
-    match /subscriptions/{docId} {
-      allow read: if isOwner(resource.data.userId) || isAdmin();
-      allow write: if false;
-    }
-    
-    // Audit logs (admin only)
-    match /audit_logs/{logId} {
-      allow read: if isAdmin();
-      allow write: if false;
-    }
-    
-    match /audit_logs_image/{logId} {
-      allow read: if isAdmin();
-      allow write: if false;
-    }
-    
-    match /audit_logs_policy/{logId} {
-      allow read: if isAdmin();
-      allow write: if false;
-    }
-    
-    match /audit_logs_billing/{logId} {
-      allow read: if isAdmin();
-      allow write: if false;
-    }
-    
-    match /audit_logs_admin/{logId} {
-      allow read: if isAdmin();
-      allow write: if false;
-    }
-    
-    // Rate limits (server-side only)
-    match /rate_limits/{userId} {
-      allow read: if isOwner(userId) || isAdmin();
-      allow write: if false;
-    }
-    
-    // Pending overrides
-    match /pending_overrides/{overrideId} {
-      allow create: if isAuthenticated();
-      allow read: if isOwner(resource.data.userId) || isAdmin();
-      allow update, delete: if isAdmin();
+    // Default deny all other access
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

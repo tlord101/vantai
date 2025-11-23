@@ -1,0 +1,121 @@
+import { motion, AnimatePresence } from 'framer-motion';
+import { Message } from '../services/gemini';
+import { User, Sparkles } from 'lucide-react';
+
+interface MessageBubbleProps {
+  message: Message;
+}
+
+export const MessageBubble = ({ message }: MessageBubbleProps) => {
+  const isUser = message.sender === 'user';
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20, scale: 0.9 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      transition={{ 
+        type: "spring",
+        stiffness: 500,
+        damping: 30,
+      }}
+      className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}
+    >
+      <div className={`flex items-end gap-2 max-w-[80%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+        {/* Avatar */}
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ delay: 0.1 }}
+          className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+            isUser 
+              ? 'bg-gradient-to-br from-purple-500 to-pink-500' 
+              : 'bg-gradient-to-br from-cyan-500 to-blue-500'
+          } glass-effect`}
+        >
+          {isUser ? (
+            <User className="w-5 h-5 text-white" />
+          ) : (
+            <Sparkles className="w-5 h-5 text-white" />
+          )}
+        </motion.div>
+
+        {/* Message Content */}
+        <div className="flex flex-col">
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            className={`relative px-4 py-3 rounded-2xl ${
+              isUser
+                ? 'bg-gradient-to-br from-purple-500/30 to-pink-500/30 glass-effect-strong rounded-br-sm'
+                : 'bg-gradient-to-br from-cyan-500/20 to-blue-500/20 glass-effect rounded-bl-sm'
+            }`}
+          >
+            {/* Animated border glow */}
+            <motion.div
+              className={`absolute inset-0 rounded-2xl ${
+                isUser ? 'rounded-br-sm' : 'rounded-bl-sm'
+              }`}
+              animate={{
+                boxShadow: [
+                  `0 0 20px ${isUser ? 'rgba(168, 85, 247, 0.3)' : 'rgba(6, 182, 212, 0.3)'}`,
+                  `0 0 40px ${isUser ? 'rgba(236, 72, 153, 0.4)' : 'rgba(59, 130, 246, 0.4)'}`,
+                  `0 0 20px ${isUser ? 'rgba(168, 85, 247, 0.3)' : 'rgba(6, 182, 212, 0.3)'}`,
+                ],
+              }}
+              transition={{ duration: 2, repeat: Infinity }}
+            />
+            
+            <p className="text-white relative z-10 text-sm leading-relaxed whitespace-pre-wrap">
+              {message.text}
+            </p>
+
+            {message.image && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="mt-2 relative z-10"
+              >
+                <img
+                  src={message.image}
+                  alt="Uploaded content"
+                  className="rounded-lg max-w-full w-full h-auto object-cover shadow-lg"
+                  loading="lazy"
+                  onError={(e) => {
+                    console.error('Image failed to load:', message.image);
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              </motion.div>
+            )}
+          </motion.div>
+
+          {/* Timestamp */}
+          <motion.span
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className={`text-xs text-white/50 mt-1 px-2 ${isUser ? 'text-right' : 'text-left'}`}
+          >
+            {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </motion.span>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+interface MessageListProps {
+  messages: Message[];
+}
+
+export const MessageList = ({ messages }: MessageListProps) => {
+  return (
+    <div className="flex-1 overflow-y-auto custom-scrollbar px-4 py-6">
+      <AnimatePresence mode="popLayout">
+        {messages.map((message) => (
+          <MessageBubble key={message.id} message={message} />
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+};

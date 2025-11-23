@@ -1,99 +1,266 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
-import { useAuth } from './hooks/useAuth';
-import Preloader from './components/Preloader';
-import AppLayout from './components/AppLayout';
-import HomePage from './pages/HomePage';
-import ChatPage from './pages/ChatPage';
-import Login from './pages/Auth/Login';
-import Register from './pages/Auth/Register';
-
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { currentUser, loading } = useAuth();
-
-  if (loading) {
-    return <Preloader message="Loading your account" />;
-  }
-
-  if (!currentUser) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return <AppLayout>{children}</AppLayout>;
-}
-
-function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { currentUser, loading } = useAuth();
-
-  if (loading) {
-    return <Preloader message="Checking authentication" />;
-  }
-
-  if (currentUser) {
-    return <Navigate to="/" replace />;
-  }
-
-  return <>{children}</>;
-}
+import { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
+import { LiquidBackground } from './components/LiquidBackground';
+import { GlassCard } from './components/GlassCard';
+import { ChatHeader } from './components/ChatHeader';
+import { MessageList } from './components/MessageList';
+import { ChatInput } from './components/ChatInput';
+import { AuthPage } from './components/AuthPage';
+import { SubscriptionPage } from './components/SubscriptionPage';
+import { useAuth } from './contexts/AuthContext';
+import { geminiService, Message } from './services/gemini';
+import { subscriptionService, SubscriptionData } from './services/subscription';
 
 function App() {
+  const { currentUser } = useAuth();
+  const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
+  const [showSubscriptionPage, setShowSubscriptionPage] = useState(false);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+  
+  // Show auth page if not logged in
+  if (!currentUser) {
+    return (
+      <div className="relative w-full h-screen overflow-hidden">
+        <LiquidBackground />
+        <div className="relative z-10">
+          <AuthPage />
+        </div>
+      </div>
+    );
+  }
+
+  // Load subscription data
+  useEffect(() => {
+    loadSubscription();
+  }, [currentUser]);
+
+  const loadSubscription = async () => {
+    if (!currentUser) return;
+    setSubscriptionLoading(true);
+    const sub = await subscriptionService.getUserSubscription(currentUser.uid);
+    setSubscription(sub);
+    
+    // Show subscription page if user has no active subscription
+    if (sub && sub.plan === 'free') {
+      setShowSubscriptionPage(true);
+    } else if (sub && new Date() > sub.endDate) {
+      // Subscription expired
+      setShowSubscriptionPage(true);
+    }
+    setSubscriptionLoading(false);
+  };
+
+  // Show subscription page
+  if (subscriptionLoading) {
+    return (
+      <div className="relative w-full h-screen overflow-hidden">
+        <LiquidBackground />
+        <div className="relative z-10 h-full flex items-center justify-center">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+            className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (showSubscriptionPage) {
+    return (
+      <div className="relative w-full h-screen overflow-hidden">
+        <LiquidBackground />
+        <div className="relative z-10">
+          <SubscriptionPage 
+            onSubscribed={() => {
+              loadSubscription();
+              setShowSubscriptionPage(false);
+            }}
+            onClose={subscription?.plan !== 'free' ? () => setShowSubscriptionPage(false) : undefined}
+          />
+        </div>
+      </div>
+    );
+  }
+  // Load chat history from localStorage
+  const loadChatHistory = (): Message[] => {
+    try {
+      const saved = localStorage.getItem(`chat_history_${currentUser?.uid}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed.map((msg: any) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp),
+        }));
+      }
+    } catch (error) {
+      console.error('Error loading chat history:', error);
+    }
+    return [
+      {
+        id: '1',
+        text: 'Hello! I\'m Gemini AI. I can help you with text and image analysis. How can I assist you today?',
+        sender: 'ai',
+        timestamp: new Date(),
+      },
+    ];
+  };
+
+  const [messages, setMessages] = useState<Message[]>(loadChatHistory);
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+    // Save chat history to localStorage
+    if (currentUser) {
+      try {
+        localStorage.setItem(`chat_history_${currentUser.uid}`, JSON.stringify(messages));
+      } catch (error) {
+        console.error('Error saving chat history:', error);
+      }
+    }
+  }, [messages, currentUser]);
+
+  const handleSendMessage = async (text: string, image?: File) => {
+    if (!currentUser) return;
+
+    // Check if user has active subscription for text chat
+    if (subscription?.plan === 'free') {
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        text: '🔒 Please subscribe to a plan to start chatting. Click the upgrade button in the header.',
+        sender: 'ai',
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+      return;
+    }
+
+    // Check image limit if image is being sent
+    if (image) {
+      const { allowed, remaining } = await subscriptionService.checkImageLimit(currentUser.uid);
+      if (!allowed) {
+        const errorMessage: Message = {
+          id: Date.now().toString(),
+          text: remaining === 0 
+            ? '🚫 You have reached your daily image limit. Upgrade to Premium for unlimited images or wait until tomorrow.'
+            : '🔒 Image uploads require a subscription. Please upgrade to Basic or Premium.',
+          sender: 'ai',
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, errorMessage]);
+        return;
+      }
+    }
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      text: text || (image ? '📷 Image uploaded' : ''),
+      sender: 'user',
+      timestamp: new Date(),
+      image: image ? URL.createObjectURL(image) : undefined,
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setIsLoading(true);
+
+    try {
+      const response = await geminiService.sendMessage(
+        text || 'Describe this image in detail.',
+        image
+      );
+
+      // Increment image count if image was sent
+      if (image && currentUser) {
+        await subscriptionService.incrementImageCount(currentUser.uid);
+      }
+
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: response,
+        sender: 'ai',
+        timestamp: new Date(),
+      };
+
+      setMessages((prev) => [...prev, aiMessage]);
+    } catch (error) {
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: 'Sorry, I encountered an error. Please make sure your Gemini API key is configured correctly in the .env file.',
+        sender: 'ai',
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleClearChat = () => {
+    const initialMessage: Message = {
+      id: '1',
+      text: 'Hello! I\'m Gemini AI. I can help you with text and image analysis. How can I assist you today?',
+      sender: 'ai',
+      timestamp: new Date(),
+    };
+    setMessages([initialMessage]);
+    if (currentUser) {
+      localStorage.removeItem(`chat_history_${currentUser.uid}`);
+    }
+  };
+
   return (
-    <Router>
-      <Toaster position="top-right" />
-      <Routes>
-        {/* Public Routes */}
-        <Route
-          path="/login"
-          element={
-            <PublicRoute>
-              <Login />
-            </PublicRoute>
-          }
-        />
-        <Route
-          path="/register"
-          element={
-            <PublicRoute>
-              <Register />
-            </PublicRoute>
-          }
-        />
+    <div className="relative w-full h-screen overflow-hidden">
+      <LiquidBackground />
+      
+      <div className="relative z-10 h-full flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="w-full max-w-2xl h-full max-h-[900px] flex flex-col"
+        >
+          <GlassCard className="flex-1 flex flex-col overflow-hidden">
+            <ChatHeader 
+              onClearChat={handleClearChat} 
+              subscription={subscription}
+              onUpgrade={() => setShowSubscriptionPage(true)}
+            />
+            
+            <MessageList messages={messages} />
+            <div ref={messagesEndRef} />
+            
+            <ChatInput 
+              onSendMessage={handleSendMessage} 
+              isLoading={isLoading}
+              subscription={subscription ? {
+                plan: subscription.plan,
+                imagesUsedToday: subscription.imagesUsedToday,
+                dailyImageLimit: subscription.plan === 'premium' ? -1 : subscription.plan === 'basic' ? 10 : 0
+              } : null}
+            />
+          </GlassCard>
 
-        {/* Protected Routes */}
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <HomePage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/messages"
-          element={
-            <ProtectedRoute>
-              <ChatPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <div className="text-center py-12">
-                <h1 className="text-3xl font-bold text-gray-900">Profile</h1>
-                <p className="text-gray-600 mt-2">Coming soon...</p>
-              </div>
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Catch all */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Router>
+          {/* Bottom Info */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="mt-4 text-center"
+          >
+            <p className="text-white/70 text-sm glass-effect rounded-full px-6 py-2 inline-block">
+              Powered by Gemini AI with Liquid Glass Design ✨
+            </p>
+          </motion.div>
+        </motion.div>
+      </div>
+    </div>
   );
 }
 
 export default App;
-
