@@ -18,7 +18,7 @@ export const AdminDashboard = () => {
   const [updatingUser, setUpdatingUser] = useState<string | null>(null);
 
   useEffect(() => {
-    loadUsers();
+    void loadUsers();
   }, []);
 
   const loadUsers = async () => {

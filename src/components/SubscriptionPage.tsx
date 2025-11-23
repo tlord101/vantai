@@ -18,7 +18,9 @@ export function SubscriptionPage({ onSubscribed, onClose }: SubscriptionPageProp
   const [currentSubscription, setCurrentSubscription] = useState<SubscriptionData | null>(null);
 
   useEffect(() => {
-    loadSubscription();
+    if (currentUser) {
+      loadSubscription();
+    }
   }, [currentUser]);
 
   const loadSubscription = async () => {

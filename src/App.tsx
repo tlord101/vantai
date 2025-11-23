@@ -44,7 +44,9 @@ function App() {
 
   // Load subscription data
   useEffect(() => {
-    loadSubscription();
+    if (currentUser) {
+      loadSubscription();
+    }
   }, [currentUser]);
 
   const loadSubscription = async () => {
