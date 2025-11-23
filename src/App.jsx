@@ -222,7 +222,7 @@ const NanoBananaApp = () => {
   
   // Custom API Key
   const [customKey, setCustomKey] = useState('');
-  const defaultApiKey = ""; 
+  const defaultApiKey = import.meta.env.VITE_GOOGLE_API_KEY || ""; 
   
   const fileInputRef = useRef(null);
 
