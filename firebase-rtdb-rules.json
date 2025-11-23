@@ -1,0 +1,101 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        
+        "profile": {
+          ".write": "auth != null && auth.uid === $uid",
+          ".validate": "newData.hasChildren(['name', 'email'])"
+        },
+        
+        "credits": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": false,
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        
+        "subscription": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": false,
+          ".validate": "newData.hasChildren(['plan', 'status'])"
+        }
+      }
+    },
+
+    "conversations": {
+      "$conversationId": {
+        ".read": "auth != null && data.child('participants').child(auth.uid).exists()",
+        ".write": "auth != null && (!data.exists() || data.child('participants').child(auth.uid).exists())",
+        
+        "participants": {
+          ".validate": "newData.hasChildren()"
+        },
+        
+        "lastMessage": {
+          ".validate": "newData.hasChildren(['text', 'senderId', 'createdAt'])"
+        },
+        
+        "typing": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid",
+            ".validate": "newData.isBoolean() || newData.val() === null"
+          }
+        }
+      }
+    },
+
+    "messages": {
+      "$conversationId": {
+        ".read": "auth != null && root.child('conversations').child($conversationId).child('participants').child(auth.uid).exists()",
+        
+        "$messageId": {
+          ".write": "auth != null && root.child('conversations').child($conversationId).child('participants').child(auth.uid).exists() && newData.child('senderId').val() === auth.uid",
+          ".validate": "newData.hasChildren(['senderId', 'text', 'createdAt', 'type'])",
+          
+          "senderId": {
+            ".validate": "newData.val() === auth.uid"
+          },
+          
+          "text": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 5000"
+          },
+          
+          "type": {
+            ".validate": "newData.val() === 'text' || newData.val() === 'image' || newData.val() === 'file'"
+          },
+          
+          "createdAt": {
+            ".validate": "newData.isNumber()"
+          },
+          
+          "storageRef": {
+            ".validate": "newData.isString()"
+          },
+          
+          "metadata": {
+            ".validate": "newData.hasChildren()"
+          }
+        }
+      }
+    },
+
+    "user_status": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid === $uid",
+        
+        "state": {
+          ".validate": "newData.val() === 'online' || newData.val() === 'offline'"
+        },
+        
+        "lastChanged": {
+          ".validate": "newData.isNumber() && newData.val() <= now"
+        }
+      }
+    }
+  }
+}
