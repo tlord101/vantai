@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Banana, Wand2, Image as ImageIcon, Download, RefreshCw, 
   AlertCircle, Settings, X, Loader2, Upload, Trash2, 
@@ -235,7 +235,6 @@ const NanoBananaApp = () => {
   const [generatedImage, setGeneratedImage] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState(null);
-  const [lastRequestTime, setLastRequestTime] = useState(0);
   
   // UI State
   const [showSettings, setShowSettings] = useState(false);
@@ -247,8 +246,6 @@ const NanoBananaApp = () => {
   const apiKey = "AIzaSyDVRaBh8YkiFoDG2GDt9szZVSypM6AyO0s"; 
   
   const fileInputRef = useRef(null);
-  const debounceTimeoutRef = useRef(null);
-  const isRequestInProgressRef = useRef(false);
 
   // --- Effects ---
 
@@ -353,26 +350,6 @@ const NanoBananaApp = () => {
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
 
-    // Clear any pending debounced requests
-    if (debounceTimeoutRef.current) {
-      clearTimeout(debounceTimeoutRef.current);
-    }
-
-    // Check if a request is already in progress
-    if (isRequestInProgressRef.current) {
-      setError('Please wait for the current request to complete');
-      return;
-    }
-
-    // Rate limiting: enforce minimum 2 seconds between requests
-    const now = Date.now();
-    const timeSinceLastRequest = now - lastRequestTimeRef.current;
-    if (timeSinceLastRequest < 2000) {
-      const waitTime = Math.ceil((2000 - timeSinceLastRequest) / 1000);
-      setError(`Please wait ${waitTime} second${waitTime > 1 ? 's' : ''} before making another request`);
-      return;
-    }
-
     // 1. Credit Check
     if (credits < COST_PER_GEN) {
       setShowPayment(true);
@@ -382,8 +359,6 @@ const NanoBananaApp = () => {
     setIsGenerating(true);
     setError(null);
     setGeneratedImage(null);
-    isRequestInProgressRef.current = true;
-    lastRequestTimeRef.current = now;
 
     // 2. Deduct Credit Optimistically
     const userRef = doc(db, 'artifacts', appId, 'users', user.uid, 'account', 'balance');
@@ -417,10 +392,10 @@ const NanoBananaApp = () => {
     } else {
       // Generation Mode
       isEditing = false;
-      url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`;
+      url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${apiKey}`;
       payload = {
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseModalities: ['IMAGE'] }
+        instances: [{ prompt: prompt }],
+        parameters: { sampleCount: 1 }
       };
     }
 
@@ -444,10 +419,15 @@ const NanoBananaApp = () => {
         const result = await response.json();
         
         let base64Image;
-        // Both editing and generation use the same API response format
-        const part = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
-        if (part && part.inlineData && part.inlineData.data) {
-          base64Image = part.inlineData.data;
+        if (isEditing) {
+          const part = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+          if (part && part.inlineData && part.inlineData.data) {
+             base64Image = part.inlineData.data;
+          }
+        } else {
+          if (result.predictions && result.predictions[0] && result.predictions[0].bytesBase64Encoded) {
+            base64Image = result.predictions[0].bytesBase64Encoded;
+          }
         }
 
         if (base64Image) {
@@ -457,42 +437,21 @@ const NanoBananaApp = () => {
         }
 
       } catch (err) {
-        // Handle 429 rate limit errors with exponential backoff
-        if (err.message.includes('429') || err.message.includes('Too Many Requests')) {
-          if (retryCount < 5) {
-            const delay = Math.pow(2, retryCount + 2) * 1000; // Longer delays for rate limits
-            setError(`Rate limited. Retrying in ${delay / 1000} seconds...`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-            setError(''); // Clear error before retry
-            return makeRequest(retryCount + 1);
-          }
-        } else if (retryCount < 3) {
-          // Other errors: shorter retry
+        if (retryCount < 4) {
           const delay = Math.pow(2, retryCount) * 1000;
           await new Promise(resolve => setTimeout(resolve, delay));
           return makeRequest(retryCount + 1);
+        } else {
+          // Refund credit on failure
+          await updateDoc(userRef, { credits: increment(COST_PER_GEN) });
+          setError(err.message || "Failed to generate. Credits have been refunded.");
         }
-        
-        // Max retries reached - refund and show error
-        await updateDoc(userRef, { credits: increment(COST_PER_GEN) });
-        setError(err.message || "Failed to generate. Credits have been refunded.");
-        isRequestInProgressRef.current = false;
       }
     };
 
     await makeRequest();
     setIsGenerating(false);
-    isRequestInProgressRef.current = false;
   };
-
-  // Cleanup debounce timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
-      }
-    };
-  }, []);
 
   const handleDownload = () => {
     if (generatedImage) {
