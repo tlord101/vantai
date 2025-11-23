@@ -95,14 +95,13 @@ const AuthScreen = ({ onLogin, loading }) => (
   </div>
 );
 
-const PaymentModal = ({ onClose, onSuccess, userEmail }) => {
+const PaymentModal = ({ onClose, onSuccess, userEmail, paystackLoaded }) => {
   const [amount, setAmount] = useState(MIN_BUY_AMOUNT);
   const [processing, setProcessing] = useState(false);
 
   const handlePay = () => {
-    if (!window.PaystackPop) {
-      alert('Paystack is not loaded. Please refresh the page and try again.');
-      setProcessing(false);
+    if (!paystackLoaded || !window.PaystackPop) {
+      alert('Payment system is still loading. Please wait a moment and try again.');
       return;
     }
 
@@ -193,11 +192,19 @@ const PaymentModal = ({ onClose, onSuccess, userEmail }) => {
 
           <button 
             onClick={handlePay}
-            disabled={processing}
-            className="w-full bg-green-500 hover:bg-green-400 text-white h-14 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-green-900/20 transition-all hover:scale-[1.02]"
+            disabled={processing || !paystackLoaded}
+            className="w-full bg-green-500 hover:bg-green-400 text-white h-14 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-green-900/20 transition-all hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {processing ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
+            {!paystackLoaded ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Loading Payment System...
+              </>
+            ) : processing ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Processing...
+              </>
             ) : (
               <>
                 <CreditCard className="w-5 h-5" />
@@ -233,14 +240,26 @@ const NanoBananaApp = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(null);
+  const [paystackLoaded, setPaystackLoaded] = useState(false);
   
-  // Custom API Key
-  const [customKey, setCustomKey] = useState('');
-  const defaultApiKey = ""; 
+  // API Key
+  const apiKey = "AIzaSyDVRaBh8YkiFoDG2GDt9szZVSypM6AyO0s"; 
   
   const fileInputRef = useRef(null);
 
   // --- Effects ---
+
+  // Check if Paystack is loaded
+  useEffect(() => {
+    const checkPaystack = () => {
+      if (window.PaystackPop) {
+        setPaystackLoaded(true);
+      } else {
+        setTimeout(checkPaystack, 100);
+      }
+    };
+    checkPaystack();
+  }, []);
 
   // Auth & Firestore Listener
   useEffect(() => {
@@ -352,13 +371,12 @@ const NanoBananaApp = () => {
     }
 
     // 3. API Call
-    const activeKey = customKey || defaultApiKey;
     let url, payload, isEditing;
 
     if (uploadedImage) {
       // Editing Mode
       isEditing = true;
-      url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${activeKey}`;
+      url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${apiKey}`;
       const base64Data = uploadedImage.split(',')[1];
       const mimeType = uploadedImage.split(';')[0].split(':')[1];
 
@@ -374,7 +392,7 @@ const NanoBananaApp = () => {
     } else {
       // Generation Mode
       isEditing = false;
-      url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${activeKey}`;
+      url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${apiKey}`;
       payload = {
         instances: [{ prompt: prompt }],
         parameters: { sampleCount: 1 }
@@ -667,6 +685,7 @@ const NanoBananaApp = () => {
           onClose={() => setShowPayment(false)} 
           onSuccess={handlePaymentSuccess}
           userEmail={user.email}
+          paystackLoaded={paystackLoaded}
         />
       )}
 
@@ -696,15 +715,9 @@ const NanoBananaApp = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-neutral-400 mb-1 uppercase">Custom Google API Key (Optional)</label>
-                <input 
-                  type="password" 
-                  value={customKey}
-                  onChange={(e) => setCustomKey(e.target.value)}
-                  placeholder="Paste your AIzaSy... key here"
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-3 text-sm text-white focus:ring-1 focus:ring-yellow-400 outline-none"
-                />
+              <div className="bg-neutral-800/50 rounded-xl p-4 border border-neutral-700">
+                <p className="text-xs text-neutral-400 mb-2">Credits</p>
+                <p className="text-2xl font-bold text-yellow-400">{credits} Nano</p>
               </div>
             </div>
 
@@ -713,7 +726,7 @@ const NanoBananaApp = () => {
                 onClick={() => setShowSettings(false)}
                 className="bg-yellow-400 text-neutral-900 px-4 py-2 rounded-lg font-semibold hover:bg-yellow-300 text-sm"
               >
-                Save & Close
+                Close
               </button>
             </div>
           </div>
