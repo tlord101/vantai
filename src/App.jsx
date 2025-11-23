@@ -394,7 +394,8 @@ const NanoBananaApp = () => {
         setProgress(50 + (retryCount * 10));
         
         let promptContent;
-        const model = uploadedImage ? "gemini-2.5-flash-image" : "gemini-2.5-flash-image";
+        // Use gemini-1.5-flash which has higher free tier limits
+        const model = "gemini-1.5-flash";
         
         if (uploadedImage) {
           // Editing Mode - include image with prompt
