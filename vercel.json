@@ -1,0 +1,7 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "nanobanana/dist",
+  "installCommand": "cd nanobanana && npm install",
+  "devCommand": "cd nanobanana && npm run dev",
+  "framework": "vite"
+}
