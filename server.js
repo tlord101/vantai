@@ -96,7 +96,7 @@ class RequestQueue {
         parameters: {
           sampleCount: 1,
           aspectRatio: "1:1",
-          safetySetting: "block_some",
+          safetySetting: "block_low_and_above",
           personGeneration: "allow_adult"
         }
       };
