@@ -95,11 +95,14 @@ class RequestQueue {
           generationConfig: { responseModalities: ['TEXT', 'IMAGE'] }
         };
       } else {
-        // Use Imagen 4.0 for text-to-image generation
-        url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${activeKey}`;
+        // Use Imagen 3 Fast (verified working endpoint)
+        url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${activeKey}`;
         payload = {
           instances: [{ prompt: prompt }],
-          parameters: { sampleCount: 1 }
+          parameters: { 
+            sampleCount: 1,
+            aspectRatio: "1:1"
+          }
         };
       }
 
