@@ -95,8 +95,10 @@ class RequestQueue {
           }],
           generationConfig: { 
             responseModalities: ['IMAGE'],
-            aspectRatio: '1:1',
-            numberOfImages: 1
+            imageConfig: {
+              aspectRatio: '1:1',
+              numberOfImages: 1
+            }
           }
         });
 
@@ -122,8 +124,10 @@ class RequestQueue {
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: { 
             responseModalities: ['IMAGE'],
-            aspectRatio: '1:1',
-            numberOfImages: 1
+            imageConfig: {
+              aspectRatio: '1:1',
+              numberOfImages: 1
+            }
           }
         });
 
