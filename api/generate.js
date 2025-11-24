@@ -108,6 +108,7 @@ async function generateImage(requestData) {
     let result;
     try {
       result = JSON.parse(responseText);
+      console.log('API Response structure:', JSON.stringify(result, null, 2).substring(0, 500));
     } catch (parseError) {
       console.error('Failed to parse JSON response:', responseText);
       throw new Error('Invalid JSON response from API');
@@ -117,14 +118,20 @@ async function generateImage(requestData) {
 
     if (isEdit) {
       // Extract from Gemini response
+      console.log('Extracting from Gemini response...');
+      console.log('Candidates:', result.candidates);
       finalImageBase64 = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
     } else {
       // Extract from Imagen response
+      console.log('Extracting from Imagen response...');
+      console.log('Predictions:', result.predictions);
       finalImageBase64 = result.predictions?.[0]?.bytesBase64Encoded;
     }
 
     if (!finalImageBase64) {
-      console.error('Full API Response:', JSON.stringify(result));
+      console.error('Full API Response:', JSON.stringify(result, null, 2));
+      console.error('isEdit:', isEdit);
+      console.error('Response keys:', Object.keys(result));
       throw new Error("No image data returned.");
     }
 
