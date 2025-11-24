@@ -74,8 +74,17 @@ async function generateImage(requestData) {
     const ai = new GoogleGenerativeAI(activeKey);
     const model = ai.getGenerativeModel({ model: 'gemini-2.5-flash-image' });
 
+    // Configuration for both Edit and Generate modes
+    const commonConfig = {
+      responseModalities: ['IMAGE'],
+      candidateCount: 1, // Replaces 'numberOfImages'
+      imageConfig: {
+        aspectRatio: '1:1' // Must be nested here
+      }
+    };
+
     if (isEdit && imageBase64) {
-      // Use Gemini 2.5 Flash for image editing
+      // Edit Mode
       const response = await model.generateContent({
         contents: [{
           parts: [
@@ -83,66 +92,42 @@ async function generateImage(requestData) {
             { inlineData: { mimeType: imageMime || 'image/png', data: imageBase64 } }
           ]
         }],
-        generationConfig: { 
-          responseModalities: ['IMAGE'],
-          imageConfig: {
-            aspectRatio: '1:1',
-            numberOfImages: 1
-          }
-        }
+        generationConfig: commonConfig
       });
-
-      const candidate = response.response.candidates[0];
-      let finalImageBase64;
-      
-      for (const part of candidate.content.parts) {
-        if (part.inlineData) {
-          finalImageBase64 = part.inlineData.data;
-          break;
-        }
-      }
-
-      if (!finalImageBase64) {
-        throw new Error("No image data returned from Gemini.");
-      }
-
-      return { imageData: finalImageBase64 };
+      return handleResponse(response);
 
     } else {
-      // Use Gemini 2.5 Flash for text-to-image generation
+      // Generate Mode
       const response = await model.generateContent({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { 
-          responseModalities: ['IMAGE'],
-          imageConfig: {
-            aspectRatio: '1:1',
-            numberOfImages: 1
-          }
-        }
+        generationConfig: commonConfig
       });
-
-      const candidate = response.response.candidates[0];
-      let finalImageBase64;
-      
-      for (const part of candidate.content.parts) {
-        if (part.inlineData) {
-          finalImageBase64 = part.inlineData.data;
-          break;
-        }
-      }
-
-      if (!finalImageBase64) {
-        console.error('Full response:', JSON.stringify(response, null, 2));
-        throw new Error("No image data returned from Gemini.");
-      }
-
-      return { imageData: finalImageBase64 };
+      return handleResponse(response);
     }
     
   } catch (error) {
     console.error('Generation Error:', error);
     throw error;
   }
+}
+
+// Helper to extract image data
+function handleResponse(response) {
+  const candidate = response.response.candidates[0];
+  let finalImageBase64;
+  
+  for (const part of candidate.content.parts) {
+    if (part.inlineData) {
+      finalImageBase64 = part.inlineData.data;
+      break;
+    }
+  }
+
+  if (!finalImageBase64) {
+    throw new Error("No image data returned from Gemini.");
+  }
+
+  return { imageData: finalImageBase64 };
 }
 
 function getQueueLength() {
