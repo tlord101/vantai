@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vant AI - Admin Panel</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Chart.js for graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slide-up {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .animate-fade-in {
+            animation: fade-in 0.3s ease-out forwards;
+        }
+
+        .animate-slide-up {
+            animation: slide-up 0.4s ease-out forwards;
+        }
+
+        .loader {
+            border: 3px solid rgba(250, 204, 21, 0.1);
+            border-left-color: #FACC15;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 999999999;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            pointer-events: none;
+        }
+
+        .toast {
+            min-width: 300px;
+            max-width: 500px;
+            padding: 16px 20px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            pointer-events: all;
+            animation: slideInRight 0.3s ease-out;
+        }
+
+        .toast.removing {
+            animation: slideOutRight 0.3s ease-out forwards;
+        }
+
+        .toast-success {
+            background: rgba(34, 197, 94, 0.15);
+            border: 1px solid rgba(34, 197, 94, 0.5);
+            color: #86efac;
+        }
+
+        .toast-error {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            color: #fca5a5;
+        }
+
+        .toast-info {
+            background: rgba(59, 130, 246, 0.15);
+            border: 1px solid rgba(59, 130, 246, 0.5);
+            color: #93c5fd;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOutRight {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+
+            to {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-neutral-900 text-yellow-50 font-sans selection:bg-yellow-500 selection:text-neutral-900">
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- APP CONTAINER -->
+    <div id="app" class="min-h-screen flex flex-col">
+
+        <!-- ==================== AUTH VIEW ==================== -->
+        <div id="auth-view" class="min-h-screen flex flex-col items-center justify-center p-4 relative w-full">
+            <!-- Background Decorations -->
+            <div class="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
+                <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-yellow-500/10 rounded-full blur-3xl animate-pulse">
+                </div>
+                <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-yellow-400/5 rounded-full blur-3xl"></div>
+            </div>
+
+            <div
+                class="z-10 bg-neutral-800/50 p-8 rounded-3xl border border-yellow-500/20 shadow-2xl max-w-md w-full backdrop-blur-md animate-slide-up">
+                <div class="flex justify-center mb-6">
+                    <div class="bg-yellow-400 p-4 rounded-2xl shadow-lg rotate-3 hover:rotate-6 transition-transform">
+                        <i data-lucide="shield-check" class="w-10 h-10 text-neutral-900 fill-neutral-900"></i>
+                    </div>
+                </div>
+
+                <h1 class="text-3xl font-bold text-center text-white mb-2">Admin Panel</h1>
+                <p class="text-center text-neutral-400 mb-6">Sign in to manage Vant AI.</p>
+
+                <!-- Email Form -->
+                <form id="auth-form" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-neutral-500 uppercase mb-1">Email</label>
+                        <input type="email" id="email-input" required
+                            class="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white focus:border-yellow-400 outline-none transition-colors"
+                            placeholder="admin@vant.com">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-neutral-500 uppercase mb-1">Password</label>
+                        <input type="password" id="password-input" required
+                            class="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white focus:border-yellow-400 outline-none transition-colors"
+                            placeholder="••••••••">
+                    </div>
+
+                    <button type="submit" id="submit-auth-btn"
+                        class="w-full bg-white text-neutral-900 font-bold h-12 rounded-xl flex items-center justify-center gap-2 hover:bg-neutral-200 transition-colors shadow-lg">
+                        <span id="auth-btn-text">Sign In</span>
+                        <div id="auth-loader" class="loader hidden"
+                            style="border-left-color: #000; border-color: rgba(0,0,0,0.1);"></div>
+                    </button>
+                </form>
+
+                <p id="auth-error" class="text-red-400 text-center text-sm mt-4 hidden"></p>
+            </div>
+        </div>
+
+        <!-- ==================== ADMIN DASHBOARD ==================== -->
+        <div id="admin-view" class="hidden min-h-screen flex flex-col">
+            <!-- Header -->
+            <header class="border-b border-yellow-500/10 bg-neutral-900/50 backdrop-blur-md sticky top-0 z-20">
+                <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="bg-yellow-400 p-1.5 rounded-lg">
+                            <i data-lucide="shield-check" class="w-5 h-5 text-neutral-900 fill-neutral-900"></i>
+                        </div>
+                        <h1 class="text-lg md:text-xl font-bold tracking-tight text-yellow-400">
+                            Vant<span class="text-white">AI</span> <span class="text-neutral-500 text-sm">Admin</span>
+                        </h1>
+                    </div>
+
+                    <button id="logout-btn"
+                        class="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-full transition-colors text-red-400">
+                        <i data-lucide="log-out" class="w-4 h-4"></i>
+                        <span class="text-sm font-bold">Logout</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Main Content -->
+            <main class="flex-1 w-full max-w-7xl mx-auto px-4 py-6 space-y-6">
+
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Total Revenue -->
+                    <div
+                        class="bg-neutral-800/40 border border-yellow-500/20 rounded-2xl p-6 backdrop-blur-sm animate-slide-up">
+                        <div class="flex items-center justify-between mb-2">
+                            <p class="text-neutral-400 text-sm font-medium">Total Revenue</p>
+                            <div class="bg-green-500/20 p-2 rounded-lg">
+                                <i data-lucide="trending-up" class="w-5 h-5 text-green-400"></i>
+                            </div>
+                        </div>
+                        <p id="total-revenue" class="text-3xl font-bold text-white">₦0</p>
+                        <p class="text-xs text-neutral-500 mt-1">All time</p>
+                    </div>
+
+                    <!-- Today's Revenue -->
+                    <div
+                        class="bg-neutral-800/40 border border-yellow-500/20 rounded-2xl p-6 backdrop-blur-sm animate-slide-up"
+                        style="animation-delay: 0.1s">
+                        <div class="flex items-center justify-between mb-2">
+                            <p class="text-neutral-400 text-sm font-medium">Today's Revenue</p>
+                            <div class="bg-yellow-500/20 p-2 rounded-lg">
+                                <i data-lucide="calendar" class="w-5 h-5 text-yellow-400"></i>
+                            </div>
+                        </div>
+                        <p id="today-revenue" class="text-3xl font-bold text-white">₦0</p>
+                        <p class="text-xs text-neutral-500 mt-1">Last 24 hours</p>
+                    </div>
+
+                    <!-- Total Users -->
+                    <div
+                        class="bg-neutral-800/40 border border-yellow-500/20 rounded-2xl p-6 backdrop-blur-sm animate-slide-up"
+                        style="animation-delay: 0.2s">
+                        <div class="flex items-center justify-between mb-2">
+                            <p class="text-neutral-400 text-sm font-medium">Total Users</p>
+                            <div class="bg-blue-500/20 p-2 rounded-lg">
+                                <i data-lucide="users" class="w-5 h-5 text-blue-400"></i>
+                            </div>
+                        </div>
+                        <p id="total-users" class="text-3xl font-bold text-white">0</p>
+                        <p class="text-xs text-neutral-500 mt-1">Registered accounts</p>
+                    </div>
+
+                    <!-- Total Generations -->
+                    <div
+                        class="bg-neutral-800/40 border border-yellow-500/20 rounded-2xl p-6 backdrop-blur-sm animate-slide-up"
+                        style="animation-delay: 0.3s">
+                        <div class="flex items-center justify-between mb-2">
+                            <p class="text-neutral-400 text-sm font-medium">Generations</p>
+                            <div class="bg-purple-500/20 p-2 rounded-lg">
+                                <i data-lucide="image" class="w-5 h-5 text-purple-400"></i>
+                            </div>
+                        </div>
+                        <p id="total-generations" class="text-3xl font-bold text-white">0</p>
+                        <p class="text-xs text-neutral-500 mt-1">Images created</p>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Revenue Chart -->
+                    <div class="bg-neutral-800/40 border border-yellow-500/20 rounded-2xl p-6 backdrop-blur-sm">
+                        <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <i data-lucide="bar-chart-3" class="w-5 h-5 text-yellow-400"></i>
+                            Revenue Overview
+                        </h3>
+                        <canvas id="revenueChart" height="250"></canvas>
+                    </div>
+
+                    <!-- Users Chart -->
+                    <div class="bg-neutral-800/40 border border-yellow-500/20 rounded-2xl p-6 backdrop-blur-sm">
+                        <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <i data-lucide="users" class="w-5 h-5 text-blue-400"></i>
+                            User Growth
+                        </h3>
+                        <canvas id="usersChart" height="250"></canvas>
+                    </div>
+                </div>
+
+                <!-- Users Table -->
+                <div class="bg-neutral-800/40 border border-yellow-500/20 rounded-2xl p-6 backdrop-blur-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                            <i data-lucide="database" class="w-5 h-5 text-yellow-400"></i>
+                            User Management
+                        </h3>
+                        <div class="flex items-center gap-2">
+                            <input type="text" id="search-input" placeholder="Search users..."
+                                class="bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-white focus:border-yellow-400 outline-none">
+                            <button id="refresh-btn"
+                                class="p-2 bg-neutral-700 hover:bg-neutral-600 rounded-lg transition-colors">
+                                <i data-lucide="refresh-cw" class="w-4 h-4 text-white"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="border-b border-neutral-700">
+                                    <th class="text-left py-3 px-4 text-xs font-bold text-neutral-400 uppercase">User
+                                    </th>
+                                    <th class="text-left py-3 px-4 text-xs font-bold text-neutral-400 uppercase">Email
+                                    </th>
+                                    <th class="text-left py-3 px-4 text-xs font-bold text-neutral-400 uppercase">
+                                        Credits</th>
+                                    <th class="text-left py-3 px-4 text-xs font-bold text-neutral-400 uppercase">Joined
+                                    </th>
+                                    <th class="text-right py-3 px-4 text-xs font-bold text-neutral-400 uppercase">
+                                        Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table-body">
+                                <tr>
+                                    <td colspan="5" class="text-center py-8 text-neutral-500">
+                                        <div class="flex flex-col items-center gap-2">
+                                            <div class="loader w-8 h-8 border-4"></div>
+                                            <p>Loading users...</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+
+        <!-- ==================== MODALS ==================== -->
+
+        <!-- Edit User Modal -->
+        <div id="edit-modal"
+            class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+            <div
+                class="bg-neutral-900 border border-yellow-500/30 w-full max-w-md rounded-2xl p-6 shadow-2xl relative animate-slide-up">
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <h3 class="text-2xl font-bold text-white flex items-center gap-2">
+                            <i data-lucide="edit-3" class="text-yellow-400 w-5 h-5"></i>
+                            Edit User
+                        </h3>
+                        <p class="text-neutral-400 text-sm mt-1">Update user credits</p>
+                    </div>
+                    <button id="close-edit-btn" class="text-neutral-500 hover:text-white">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="bg-neutral-800/50 rounded-xl p-4 border border-neutral-700">
+                        <p class="text-xs text-neutral-400 uppercase tracking-wider font-bold mb-1">User</p>
+                        <p id="edit-user-email" class="text-white font-medium">user@example.com</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-neutral-400 uppercase mb-2">Add Nano Credits</label>
+                        <input type="number" id="credits-input" min="1" value="10"
+                            class="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white focus:border-yellow-400 outline-none transition-colors"
+                            placeholder="Enter amount">
+                    </div>
+
+                    <div class="flex gap-3">
+                        <button id="add-credits-btn"
+                            class="flex-1 bg-yellow-400 hover:bg-yellow-300 text-neutral-900 h-12 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all">
+                            <i data-lucide="plus-circle" class="w-5 h-5"></i>
+                            Add Credits
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Confirmation Modal -->
+        <div id="delete-modal"
+            class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+            <div
+                class="bg-neutral-900 border border-red-500/30 w-full max-w-md rounded-2xl p-6 shadow-2xl relative animate-slide-up">
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <h3 class="text-2xl font-bold text-white flex items-center gap-2">
+                            <i data-lucide="alert-triangle" class="text-red-400 w-5 h-5"></i>
+                            Delete User
+                        </h3>
+                        <p class="text-neutral-400 text-sm mt-1">This action cannot be undone</p>
+                    </div>
+                    <button id="close-delete-btn" class="text-neutral-500 hover:text-white">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
+                        <p class="text-red-200 text-sm">Are you sure you want to delete this user?</p>
+                        <p id="delete-user-email" class="text-white font-bold mt-2">user@example.com</p>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <button id="cancel-delete-btn"
+                            class="flex-1 bg-neutral-700 hover:bg-neutral-600 text-white h-12 rounded-xl font-bold transition-colors">
+                            Cancel
+                        </button>
+                        <button id="confirm-delete-btn"
+                            class="flex-1 bg-red-500 hover:bg-red-400 text-white h-12 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            Delete User
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+        import { getFirestore, collection, getDocs, doc, getDoc, updateDoc, deleteDoc, increment, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+        // --- Toast Notification System ---
+        function showToast(type, message, duration = 5000) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const toastId = 'toast-' + Date.now();
+            toast.id = toastId;
+
+            const icons = {
+                success: 'check-circle-2',
+                error: 'alert-circle',
+                info: 'info'
+            };
+
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `
+                <i data-lucide="${icons[type] || 'info'}" class="w-5 h-5 flex-shrink-0"></i>
+                <p class="text-sm font-medium flex-1">${message}</p>
+                <button onclick="this.parentElement.remove()" class="hover:opacity-70 transition-opacity">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            `;
+
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.classList.add('removing');
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        }
+
+        // --- Configuration ---
+        const ADMIN_EMAIL = 'admin@vant.com';
+        const ADMIN_PASSWORD = 'admin101';
+        const APP_ID = "nano-banana-v1";
+        const PRICE_PER_NANO = 350;
+
+        let firebaseConfig = null;
+        const API_BASE_URL = window.location.origin;
+
+        async function loadConfig() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/config`);
+                const config = await response.json();
+                firebaseConfig = config.firebase;
+                return config;
+            } catch (error) {
+                showToast('error', 'Failed to load configuration');
+                throw error;
+            }
+        }
+
+        let app, auth, db;
+
+        async function initFirebase() {
+            await loadConfig();
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+        }
+
+        let currentAdmin = null;
+        let allUsers = [];
+        let selectedUserId = null;
+        let revenueChart = null;
+        let usersChart = null;
+
+        // UI Elements
+        const views = {
+            auth: document.getElementById('auth-view'),
+            admin: document.getElementById('admin-view')
+        };
+
+        const els = {
+            authForm: document.getElementById('auth-form'),
+            emailInput: document.getElementById('email-input'),
+            passInput: document.getElementById('password-input'),
+            submitAuthBtn: document.getElementById('submit-auth-btn'),
+            authBtnText: document.getElementById('auth-btn-text'),
+            authLoader: document.getElementById('auth-loader'),
+            authError: document.getElementById('auth-error'),
+            logoutBtn: document.getElementById('logout-btn'),
+            totalRevenue: document.getElementById('total-revenue'),
+            todayRevenue: document.getElementById('today-revenue'),
+            totalUsers: document.getElementById('total-users'),
+            totalGenerations: document.getElementById('total-generations'),
+            usersTableBody: document.getElementById('users-table-body'),
+            searchInput: document.getElementById('search-input'),
+            refreshBtn: document.getElementById('refresh-btn'),
+            editModal: document.getElementById('edit-modal'),
+            deleteModal: document.getElementById('delete-modal'),
+            closeEditBtn: document.getElementById('close-edit-btn'),
+            closeDeleteBtn: document.getElementById('close-delete-btn'),
+            editUserEmail: document.getElementById('edit-user-email'),
+            deleteUserEmail: document.getElementById('delete-user-email'),
+            creditsInput: document.getElementById('credits-input'),
+            addCreditsBtn: document.getElementById('add-credits-btn'),
+            cancelDeleteBtn: document.getElementById('cancel-delete-btn'),
+            confirmDeleteBtn: document.getElementById('confirm-delete-btn')
+        };
+
+        // --- Auth Logic ---
+        els.authForm.onsubmit = async (e) => {
+            e.preventDefault();
+            const email = els.emailInput.value;
+            const password = els.passInput.value;
+
+            if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) {
+                els.authError.innerText = 'Invalid admin credentials';
+                els.authError.classList.remove('hidden');
+                return;
+            }
+
+            setAuthLoading(true);
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+            } catch (error) {
+                showAuthError('Invalid credentials');
+                setAuthLoading(false);
+            }
+        };
+
+        function setAuthLoading(loading) {
+            els.submitAuthBtn.disabled = loading;
+            if (loading) {
+                els.authBtnText.classList.add('hidden');
+                els.authLoader.classList.remove('hidden');
+            } else {
+                els.authBtnText.classList.remove('hidden');
+                els.authLoader.classList.add('hidden');
+            }
+        }
+
+        function showAuthError(msg) {
+            els.authError.innerText = msg;
+            els.authError.classList.remove('hidden');
+        }
+
+        els.logoutBtn.onclick = () => signOut(auth);
+
+        // --- App State Listener ---
+        function setupAuthListener() {
+            onAuthStateChanged(auth, async (user) => {
+                if (user && user.email === ADMIN_EMAIL) {
+                    currentAdmin = user;
+                    views.auth.classList.add('hidden');
+                    views.admin.classList.remove('hidden');
+                    await loadDashboardData();
+                } else {
+                    if (user) await signOut(auth);
+                    currentAdmin = null;
+                    views.auth.classList.remove('hidden');
+                    views.admin.classList.add('hidden');
+                    setAuthLoading(false);
+                }
+            });
+        }
+
+        // --- Dashboard Functions ---
+        async function loadDashboardData() {
+            try {
+                const usersSnapshot = await getDocs(collection(db, 'artifacts', APP_ID, 'users'));
+
+                allUsers = [];
+                let totalRevenue = 0;
+                let todayRevenue = 0;
+                let totalGenerations = 0;
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                for (const userDoc of usersSnapshot.docs) {
+                    const userId = userDoc.id;
+                    const balanceDoc = await getDoc(doc(db, 'artifacts', APP_ID, 'users', userId, 'account', 'balance'));
+                    
+                    if (balanceDoc.exists()) {
+                        const data = balanceDoc.data();
+                        const credits = data.credits || 0;
+                        const email = data.email || 'N/A';
+
+                        allUsers.push({
+                            id: userId,
+                            email: email,
+                            credits: credits,
+                            joinedAt: userDoc.data().createdAt || new Date()
+                        });
+
+                        // Calculate revenue (mock calculation based on credits used)
+                        // Assuming users start with 0 and purchase credits
+                        totalRevenue += credits * PRICE_PER_NANO;
+                        
+                        // Mock today's revenue (you'd track this with timestamps in real app)
+                        if (Math.random() > 0.5) {
+                            todayRevenue += credits * PRICE_PER_NANO * 0.1;
+                        }
+                    }
+                }
+
+                // Update stats
+                els.totalRevenue.innerText = `₦${totalRevenue.toLocaleString()}`;
+                els.todayRevenue.innerText = `₦${Math.floor(todayRevenue).toLocaleString()}`;
+                els.totalUsers.innerText = allUsers.length;
+                els.totalGenerations.innerText = totalGenerations;
+
+                renderUsersTable(allUsers);
+                renderCharts();
+            } catch (error) {
+                console.error('Error loading data:', error);
+                showToast('error', 'Failed to load dashboard data');
+            }
+        }
+
+        function renderUsersTable(users) {
+            if (users.length === 0) {
+                els.usersTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center py-8 text-neutral-500">No users found</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            els.usersTableBody.innerHTML = users.map(user => `
+                <tr class="border-b border-neutral-800 hover:bg-neutral-800/30 transition-colors">
+                    <td class="py-4 px-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-yellow-400/20 rounded-full flex items-center justify-center">
+                                <span class="text-yellow-400 font-bold">${user.email.charAt(0).toUpperCase()}</span>
+                            </div>
+                            <div>
+                                <p class="text-white font-medium text-sm">${user.email.split('@')[0]}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="py-4 px-4 text-neutral-300 text-sm">${user.email}</td>
+                    <td class="py-4 px-4">
+                        <span class="inline-flex items-center gap-1 px-3 py-1 bg-yellow-400/20 text-yellow-400 rounded-full text-xs font-bold">
+                            <i data-lucide="coins" class="w-3 h-3"></i>
+                            ${user.credits}
+                        </span>
+                    </td>
+                    <td class="py-4 px-4 text-neutral-400 text-sm">
+                        ${new Date(user.joinedAt).toLocaleDateString()}
+                    </td>
+                    <td class="py-4 px-4">
+                        <div class="flex items-center justify-end gap-2">
+                            <button onclick="openEditModal('${user.id}')" 
+                                class="p-2 bg-yellow-400/10 hover:bg-yellow-400/20 text-yellow-400 rounded-lg transition-colors"
+                                title="Edit Credits">
+                                <i data-lucide="edit-3" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="openDeleteModal('${user.id}')"
+                                class="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"
+                                title="Delete User">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+
+            lucide.createIcons();
+        }
+
+        function renderCharts() {
+            // Revenue Chart
+            const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+            if (revenueChart) revenueChart.destroy();
+
+            revenueChart = new Chart(revenueCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'Revenue (₦)',
+                        data: [1200, 1900, 3000, 5000, 4000, 3000, 4500],
+                        borderColor: '#FACC15',
+                        backgroundColor: 'rgba(250, 204, 21, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: '#a3a3a3' },
+                            grid: { color: '#262626' }
+                        },
+                        x: {
+                            ticks: { color: '#a3a3a3' },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+
+            // Users Chart
+            const usersCtx = document.getElementById('usersChart').getContext('2d');
+            if (usersChart) usersChart.destroy();
+
+            usersChart = new Chart(usersCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'New Users',
+                        data: [2, 5, 3, 8, 4, 6, 7],
+                        backgroundColor: '#3b82f6',
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { 
+                                color: '#a3a3a3',
+                                stepSize: 1
+                            },
+                            grid: { color: '#262626' }
+                        },
+                        x: {
+                            ticks: { color: '#a3a3a3' },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- Modal Functions ---
+        window.openEditModal = (userId) => {
+            selectedUserId = userId;
+            const user = allUsers.find(u => u.id === userId);
+            if (user) {
+                els.editUserEmail.innerText = user.email;
+                els.creditsInput.value = 10;
+                els.editModal.classList.remove('hidden');
+            }
+        };
+
+        window.openDeleteModal = (userId) => {
+            selectedUserId = userId;
+            const user = allUsers.find(u => u.id === userId);
+            if (user) {
+                els.deleteUserEmail.innerText = user.email;
+                els.deleteModal.classList.remove('hidden');
+            }
+        };
+
+        els.closeEditBtn.onclick = () => els.editModal.classList.add('hidden');
+        els.closeDeleteBtn.onclick = () => els.deleteModal.classList.add('hidden');
+        els.cancelDeleteBtn.onclick = () => els.deleteModal.classList.add('hidden');
+
+        els.addCreditsBtn.onclick = async () => {
+            const amount = parseInt(els.creditsInput.value);
+            if (!amount || amount < 1) {
+                showToast('error', 'Please enter a valid amount');
+                return;
+            }
+
+            try {
+                const userRef = doc(db, 'artifacts', APP_ID, 'users', selectedUserId, 'account', 'balance');
+                await updateDoc(userRef, { credits: increment(amount) });
+                
+                showToast('success', `Added ${amount} Nano credits successfully!`);
+                els.editModal.classList.add('hidden');
+                await loadDashboardData();
+            } catch (error) {
+                console.error('Error adding credits:', error);
+                showToast('error', 'Failed to add credits');
+            }
+        };
+
+        els.confirmDeleteBtn.onclick = async () => {
+            try {
+                await deleteDoc(doc(db, 'artifacts', APP_ID, 'users', selectedUserId, 'account', 'balance'));
+                await deleteDoc(doc(db, 'artifacts', APP_ID, 'users', selectedUserId));
+                
+                showToast('success', 'User deleted successfully!');
+                els.deleteModal.classList.add('hidden');
+                await loadDashboardData();
+            } catch (error) {
+                console.error('Error deleting user:', error);
+                showToast('error', 'Failed to delete user');
+            }
+        };
+
+        // Search functionality
+        els.searchInput.oninput = (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredUsers = allUsers.filter(user => 
+                user.email.toLowerCase().includes(searchTerm)
+            );
+            renderUsersTable(filteredUsers);
+        };
+
+        els.refreshBtn.onclick = () => {
+            showToast('info', 'Refreshing data...');
+            loadDashboardData();
+        };
+
+        // Init Firebase and Icons
+        initFirebase().then(() => {
+            setupAuthListener();
+            lucide.createIcons();
+        }).catch(err => {
+            showToast('error', 'Failed to initialize app: ' + err.message);
+        });
+
+    </script>
+</body>
+
+</html>
