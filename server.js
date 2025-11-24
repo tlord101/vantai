@@ -85,8 +85,8 @@ class RequestQueue {
         throw new Error('Image editing is currently not available. Please use text-to-image generation.');
       }
       
-      // Use Imagen 4.0 for text-to-image generation
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${activeKey}`;
+      // Use Imagen 4.0 explicitly - imagen-4.0-generate model
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate:predict?key=${activeKey}`;
       const payload = {
         instances: [
           {
@@ -109,12 +109,12 @@ class RequestQueue {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Imagen 4.0 API Error:', errorText);
-        throw new Error(`Imagen 4.0 API Error: ${response.status} - ${errorText}`);
+        console.error('Imagen 4.0 Generate API Error:', errorText);
+        throw new Error(`Imagen 4.0 Generate API Error: ${response.status} - ${errorText}`);
       }
 
       const result = await response.json();
-      console.log('Imagen 4.0 Response:', JSON.stringify(result).substring(0, 300));
+      console.log('Imagen 4.0 Generate Response:', JSON.stringify(result).substring(0, 300));
       
       // Try different possible response formats
       let finalImageBase64 = 
@@ -125,8 +125,8 @@ class RequestQueue {
         result.images?.[0]?.data;
 
       if (!finalImageBase64) {
-        console.error('Full Imagen 4.0 Response:', JSON.stringify(result));
-        throw new Error("No image data in Imagen 4.0 response.");
+        console.error('Full Imagen 4.0 Generate Response:', JSON.stringify(result));
+        throw new Error("No image data in Imagen 4.0 Generate response.");
       }
 
       return { imageData: finalImageBase64 };
