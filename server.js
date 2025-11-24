@@ -85,27 +85,19 @@ class RequestQueue {
         throw new Error('Image editing is currently not available. Please use text-to-image generation.');
       }
       
-      // Use Pollinations.ai for text-to-image generation (free, no auth required)
-      const encodedPrompt = encodeURIComponent(prompt);
-      const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true`;
+      // Use Pollinations.ai API (free, no authentication required)
+      const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&nologo=true`;
       
-      console.log('Fetching image from Pollinations.ai...');
-      const response = await fetch(imageUrl);
-
+      const response = await fetch(pollinationsUrl);
+      
       if (!response.ok) {
-        throw new Error(`Pollinations.ai API Error: ${response.status}`);
+        throw new Error(`Image generation failed: ${response.status}`);
       }
-
-      // Get image as buffer and convert to base64
-      const arrayBuffer = await response.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      const finalImageBase64 = buffer.toString('base64');
-
-      if (!finalImageBase64) {
-        throw new Error("No image data received from Pollinations.ai");
-      }
-
-      return { imageData: finalImageBase64 };
+      
+      const imageBuffer = await response.arrayBuffer();
+      const base64Image = Buffer.from(imageBuffer).toString('base64');
+      
+      return { imageData: base64Image };
       
     } catch (error) {
       console.error('Generation Error:', error);
