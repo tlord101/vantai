@@ -1,5 +1,11 @@
 {
   "buildCommand": null,
   "outputDirectory": ".",
-  "installCommand": "echo 'No install needed'"
+  "installCommand": "echo 'No install needed'",
+  "functions": {
+    "api/**/*.js": {
+      "memory": 1024,
+      "maxDuration": 30
+    }
+  }
 }

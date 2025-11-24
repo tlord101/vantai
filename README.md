@@ -51,7 +51,31 @@ npm run dev
 
 The app will be available at `http://localhost:3000`
 
-## Queue System
+## Deployment to Vercel
+
+### Environment Variables Setup
+
+Add the following environment variables in your Vercel project settings:
+
+1. Go to your Vercel project dashboard
+2. Navigate to Settings → Environment Variables
+3. Add all variables from `.env`:
+   - `FIREBASE_API_KEY`
+   - `FIREBASE_AUTH_DOMAIN`
+   - `FIREBASE_PROJECT_ID`
+   - `FIREBASE_STORAGE_BUCKET`
+   - `FIREBASE_MESSAGING_SENDER_ID`
+   - `FIREBASE_APP_ID`
+   - `FIREBASE_MEASUREMENT_ID`
+   - `FIREBASE_DATABASE_URL`
+   - `PAYSTACK_PUBLIC_KEY`
+   - `GOOGLE_GEN_API_KEY`
+
+4. Redeploy your application
+
+The serverless functions in the `/api` folder will automatically handle requests on Vercel.
+
+## Rate Limiting
 
 The application implements an intelligent queue system to handle multiple concurrent users:
 
