@@ -98,13 +98,21 @@ async function generateImage(requestData) {
       body: JSON.stringify(payload)
     });
 
+    const responseText = await response.text();
+
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API Error:', response.status, errorText);
-      throw new Error(`API Error: ${response.status} - ${errorText}`);
+      console.error('API Error:', response.status, responseText);
+      throw new Error(`API Error: ${response.status} - ${responseText}`);
     }
 
-    const result = await response.json();
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('Failed to parse JSON response:', responseText);
+      throw new Error('Invalid JSON response from API');
+    }
+
     let finalImageBase64;
 
     if (isEdit) {
@@ -186,9 +194,11 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Generation error:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({
       success: false,
-      error: error.message || 'Failed to generate image'
+      error: error.message || 'Failed to generate image',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 }
