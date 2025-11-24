@@ -699,42 +699,44 @@
         els.logoutBtn.onclick = () => signOut(auth);
 
         // --- App State Listener ---
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                currentUser = user;
-                // Update UI for User
-                views.auth.classList.add('hidden');
-                views.main.classList.remove('hidden');
-                views.main.classList.add('flex');
+        function setupAuthListener() {
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    currentUser = user;
+                    // Update UI for User
+                    views.auth.classList.add('hidden');
+                    views.main.classList.remove('hidden');
+                    views.main.classList.add('flex');
 
-                els.userName.innerText = user.displayName || 'User';
-                els.userEmail.innerText = user.email;
-                if (user.photoURL) {
-                    els.userAvatar.innerHTML = `<img src="${user.photoURL}" class="w-full h-full rounded-full">`;
+                    els.userName.innerText = user.displayName || 'User';
+                    els.userEmail.innerText = user.email;
+                    if (user.photoURL) {
+                        els.userAvatar.innerHTML = `<img src="${user.photoURL}" class="w-full h-full rounded-full">`;
+                    } else {
+                        els.userAvatar.innerHTML = user.email.charAt(0).toUpperCase();
+                    }
+
+                    // Firestore Sync
+                    const userRef = doc(db, 'artifacts', APP_ID, 'users', user.uid, 'account', 'balance');
+                    const snap = await getDoc(userRef);
+                    if (!snap.exists()) {
+                        await setDoc(userRef, { credits: 0, email: user.email });
+                    }
+                    onSnapshot(userRef, (doc) => {
+                        credits = doc.data()?.credits || 0;
+                        els.creditCount.innerText = credits;
+                        els.creditCount.className = credits < 1 ? 'font-mono font-bold text-red-400' : 'font-mono font-bold text-white';
+                    });
+
                 } else {
-                    els.userAvatar.innerHTML = user.email.charAt(0).toUpperCase();
+                    currentUser = null;
+                    views.auth.classList.remove('hidden');
+                    views.main.classList.add('hidden');
+                    views.main.classList.remove('flex');
+                    setAuthLoading(false);
                 }
-
-                // Firestore Sync
-                const userRef = doc(db, 'artifacts', APP_ID, 'users', user.uid, 'account', 'balance');
-                const snap = await getDoc(userRef);
-                if (!snap.exists()) {
-                    await setDoc(userRef, { credits: 0, email: user.email });
-                }
-                onSnapshot(userRef, (doc) => {
-                    credits = doc.data()?.credits || 0;
-                    els.creditCount.innerText = credits;
-                    els.creditCount.className = credits < 1 ? 'font-mono font-bold text-red-400' : 'font-mono font-bold text-white';
-                });
-
-            } else {
-                currentUser = null;
-                views.auth.classList.remove('hidden');
-                views.main.classList.add('hidden');
-                views.main.classList.remove('flex');
-                setAuthLoading(false);
-            }
-        });
+            });
+        }
 
         // --- Payment Logic ---
         els.buyBtn.onclick = () => els.paymentModal.classList.remove('hidden');
@@ -951,6 +953,7 @@
 
         // Init Firebase and Icons
         initFirebase().then(() => {
+            setupAuthListener();
             lucide.createIcons();
         }).catch(err => {
             showToast('error', 'Failed to initialize app: ' + err.message);
