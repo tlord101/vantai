@@ -67,52 +67,100 @@ async function processQueue() {
 async function generateImage(requestData) {
   const { prompt, customKey, isEdit, imageBase64, imageMime } = requestData;
   const activeKey = customKey || process.env.GOOGLE_GEN_API_KEY;
-  let url, payload;
+  
+  try {
+    if (isEdit && imageBase64) {
+      // Image editing with Gemini
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${activeKey}`;
+      const payload = {
+        contents: [{
+          parts: [
+            { text: prompt },
+            { 
+              inline_data: { 
+                mime_type: imageMime, 
+                data: imageBase64 
+              } 
+            }
+          ]
+        }],
+        generationConfig: { 
+          temperature: 1,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 8192
+        }
+      };
 
-  if (isEdit && imageBase64) {
-    url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${activeKey}`;
-    payload = {
-      contents: [{
-        parts: [
-          { text: prompt },
-          { inlineData: { mimeType: imageMime, data: imageBase64 } }
-        ]
-      }],
-      generationConfig: { responseModalities: ['TEXT', 'IMAGE'] }
-    };
-  } else {
-    url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${activeKey}`;
-    payload = {
-      instances: [{ prompt: prompt }],
-      parameters: { sampleCount: 1 }
-    };
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Gemini API Error:', errorText);
+        throw new Error(`Gemini API Error: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      // For now, return a message since Gemini doesn't generate images directly
+      // You would need to use a different model for image editing
+      throw new Error('Image editing is currently not available. Please use text-to-image generation.');
+      
+    } else {
+      // Text to image with Imagen 3
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${activeKey}`;
+      const payload = {
+        instances: [
+          {
+            prompt: prompt
+          }
+        ],
+        parameters: {
+          sampleCount: 1,
+          aspectRatio: "1:1",
+          safetySetting: "block_some",
+          personGeneration: "allow_adult"
+        }
+      };
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Imagen API Error:', errorText);
+        throw new Error(`Imagen API Error: ${response.status} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('API Response:', JSON.stringify(result).substring(0, 200));
+      
+      // Try different possible response formats
+      let finalImageBase64 = 
+        result.predictions?.[0]?.bytesBase64Encoded ||
+        result.predictions?.[0]?.image?.bytesBase64Encoded ||
+        result.predictions?.[0]?.generatedImages?.[0]?.bytesBase64Encoded ||
+        result.generated_images?.[0]?.image_base64 ||
+        result.images?.[0]?.data;
+
+      if (!finalImageBase64) {
+        console.error('Full API Response:', JSON.stringify(result));
+        throw new Error("No image data in API response. The API format may have changed.");
+      }
+
+      return { imageData: finalImageBase64 };
+    }
+  } catch (error) {
+    console.error('Generation Error:', error);
+    throw error;
   }
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`API Error: ${response.status} - ${errorText}`);
-  }
-
-  const result = await response.json();
-  let finalImageBase64;
-
-  if (isEdit) {
-    finalImageBase64 = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
-  } else {
-    finalImageBase64 = result.predictions?.[0]?.bytesBase64Encoded;
-  }
-
-  if (!finalImageBase64) {
-    throw new Error("No image data returned from API.");
-  }
-
-  return { imageData: finalImageBase64 };
 }
 
 function getQueueLength() {
