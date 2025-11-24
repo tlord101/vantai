@@ -30,7 +30,18 @@ export default async function handler(req, res) {
       });
     }
 
+    console.log('Video generation request:', { 
+      prompt: prompt.substring(0, 50), 
+      userId, 
+      hasImage: !!imageBase64 
+    });
+
     const activeKey = customKey || process.env.GOOGLE_GEN_API_KEY;
+    
+    if (!activeKey) {
+      throw new Error('API key not configured');
+    }
+
     const ai = new GoogleGenerativeAI(activeKey);
     const model = ai.getGenerativeModel({ model: 'veo-3.0-fast-generate-preview' });
 
@@ -49,12 +60,17 @@ export default async function handler(req, res) {
       contents = [{ parts: [{ text: prompt }] }];
     }
 
+    console.log('Calling Veo API...');
+
     const response = await model.generateContent({
       contents,
       generationConfig: {
         responseModalities: ['VIDEO']
       }
     });
+
+    console.log('Veo API response received');
+    console.log('Response structure:', JSON.stringify(response.response, null, 2).substring(0, 500));
 
     const candidate = response.response.candidates[0];
     let videoBase64;
@@ -72,6 +88,8 @@ export default async function handler(req, res) {
       throw new Error("No video data returned from Veo.");
     }
 
+    console.log('Video generated successfully, size:', videoBase64.length);
+
     res.status(200).json({
       success: true,
       videoData: videoBase64
@@ -79,9 +97,16 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Video generation error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    
     res.status(500).json({
       success: false,
-      error: error.message || 'Failed to generate video'
+      error: error.message || 'Failed to generate video',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 }
