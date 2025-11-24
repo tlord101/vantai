@@ -82,27 +82,25 @@ class RequestQueue {
     
     try {
       const ai = new GoogleGenerativeAI(activeKey);
+      const model = ai.getGenerativeModel({ model: 'gemini-2.5-flash-image' });
 
       if (isEdit && imageBase64) {
         // Use Gemini 2.5 Flash for image editing
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash-image',
+        const response = await model.generateContent({
           contents: [{
             parts: [
               { text: prompt },
               { inlineData: { mimeType: imageMime || 'image/png', data: imageBase64 } }
             ]
           }],
-          config: {
+          generationConfig: { 
             responseModalities: ['IMAGE'],
-            imageConfig: { 
-              aspectRatio: '1:1',
-              numberOfImages: 1 
-            }
+            aspectRatio: '1:1',
+            numberOfImages: 1
           }
         });
 
-        const candidate = response.candidates[0];
+        const candidate = response.response.candidates[0];
         let finalImageBase64;
         
         for (const part of candidate.content.parts) {
@@ -120,19 +118,16 @@ class RequestQueue {
 
       } else {
         // Use Gemini 2.5 Flash for text-to-image generation
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash-image',
-          contents: prompt,
-          config: {
+        const response = await model.generateContent({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { 
             responseModalities: ['IMAGE'],
-            imageConfig: { 
-              aspectRatio: '1:1',
-              numberOfImages: 1 
-            }
+            aspectRatio: '1:1',
+            numberOfImages: 1
           }
         });
 
-        const candidate = response.candidates[0];
+        const candidate = response.response.candidates[0];
         let finalImageBase64;
         
         for (const part of candidate.content.parts) {
