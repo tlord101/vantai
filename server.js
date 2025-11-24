@@ -85,51 +85,24 @@ class RequestQueue {
         throw new Error('Image editing is currently not available. Please use text-to-image generation.');
       }
       
-      // Use Imagen 4.0 for text-to-image generation
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${activeKey}`;
-      const payload = {
-        instances: [
-          {
-            prompt: prompt
-          }
-        ],
-        parameters: {
-          sampleCount: 1,
-          aspectRatio: "1:1",
-          safetySetting: "block_low_and_above",
-          personGeneration: "allow_adult"
-        }
-      };
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.GOOGLE_GEN_AI_KEY}`
-        },
-        body: JSON.stringify(payload)
-      });
+      // Use Pollinations.ai for text-to-image generation (free, no auth required)
+      const encodedPrompt = encodeURIComponent(prompt);
+      const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true`;
+      
+      console.log('Fetching image from Pollinations.ai...');
+      const response = await fetch(imageUrl);
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Imagen 4.0 API Error:', errorText);
-        throw new Error(`Imagen 4.0 API Error: ${response.status} - ${errorText}`);
+        throw new Error(`Pollinations.ai API Error: ${response.status}`);
       }
 
-      const result = await response.json();
-      console.log('Imagen 4.0 Response:', JSON.stringify(result).substring(0, 300));
-      
-      // Try different possible response formats
-      let finalImageBase64 = 
-        result.predictions?.[0]?.bytesBase64Encoded ||
-        result.predictions?.[0]?.image?.bytesBase64Encoded ||
-        result.predictions?.[0]?.generatedImages?.[0]?.bytesBase64Encoded ||
-        result.generated_images?.[0]?.image_base64 ||
-        result.images?.[0]?.data;
+      // Get image as buffer and convert to base64
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      const finalImageBase64 = buffer.toString('base64');
 
       if (!finalImageBase64) {
-        console.error('Full Imagen 4.0 Response:', JSON.stringify(result));
-        throw new Error("No image data in Imagen 4.0 response.");
+        throw new Error("No image data received from Pollinations.ai");
       }
 
       return { imageData: finalImageBase64 };
