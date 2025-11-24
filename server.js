@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -80,61 +81,74 @@ class RequestQueue {
     const activeKey = customKey || process.env.GOOGLE_GEN_API_KEY;
     
     try {
-      let url, payload;
+      const ai = new GoogleGenerativeAI(activeKey);
 
       if (isEdit && imageBase64) {
         // Use Gemini 2.5 Flash for image editing
-        url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${activeKey}`;
-        payload = {
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash-image',
           contents: [{
             parts: [
               { text: prompt },
               { inlineData: { mimeType: imageMime || 'image/png', data: imageBase64 } }
             ]
           }],
-          generationConfig: { responseModalities: ['TEXT', 'IMAGE'] }
-        };
-      } else {
-        // Use Imagen 3 Fast (verified working endpoint)
-        url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${activeKey}`;
-        payload = {
-          instances: [{ prompt: prompt }],
-          parameters: { 
-            sampleCount: 1,
-            aspectRatio: "1:1"
+          config: {
+            responseModalities: ['IMAGE'],
+            imageConfig: { 
+              aspectRatio: '1:1',
+              numberOfImages: 1 
+            }
           }
-        };
-      }
+        });
 
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+        const candidate = response.candidates[0];
+        let finalImageBase64;
+        
+        for (const part of candidate.content.parts) {
+          if (part.inlineData) {
+            finalImageBase64 = part.inlineData.data;
+            break;
+          }
+        }
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API Error:', response.status, errorText);
-        throw new Error(`API Error: ${response.status} - ${errorText}`);
-      }
+        if (!finalImageBase64) {
+          throw new Error("No image data returned from Gemini.");
+        }
 
-      const result = await response.json();
-      let finalImageBase64;
+        return { imageData: finalImageBase64 };
 
-      if (isEdit) {
-        // Extract from Gemini response
-        finalImageBase64 = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
       } else {
-        // Extract from Imagen response
-        finalImageBase64 = result.predictions?.[0]?.bytesBase64Encoded;
-      }
+        // Use Gemini 2.5 Flash for text-to-image generation
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash-image',
+          contents: prompt,
+          config: {
+            responseModalities: ['IMAGE'],
+            imageConfig: { 
+              aspectRatio: '1:1',
+              numberOfImages: 1 
+            }
+          }
+        });
 
-      if (!finalImageBase64) {
-        console.error('Full API Response:', JSON.stringify(result));
-        throw new Error("No image data returned.");
-      }
+        const candidate = response.candidates[0];
+        let finalImageBase64;
+        
+        for (const part of candidate.content.parts) {
+          if (part.inlineData) {
+            finalImageBase64 = part.inlineData.data;
+            break;
+          }
+        }
 
-      return { imageData: finalImageBase64 };
+        if (!finalImageBase64) {
+          console.error('Full response:', JSON.stringify(response, null, 2));
+          throw new Error("No image data returned from Gemini.");
+        }
+
+        return { imageData: finalImageBase64 };
+      }
       
     } catch (error) {
       console.error('Generation Error:', error);

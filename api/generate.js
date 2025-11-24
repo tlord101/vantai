@@ -1,3 +1,5 @@
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
 // Initialize global queue if it doesn't exist
 if (!global.requestQueue) {
   global.requestQueue = {
@@ -69,79 +71,74 @@ async function generateImage(requestData) {
   const activeKey = customKey || process.env.GOOGLE_GEN_API_KEY;
   
   try {
-    let url, payload;
+    const ai = new GoogleGenerativeAI(activeKey);
 
     if (isEdit && imageBase64) {
       // Use Gemini 2.5 Flash for image editing
-      url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${activeKey}`;
-      payload = {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image',
         contents: [{
           parts: [
             { text: prompt },
             { inlineData: { mimeType: imageMime || 'image/png', data: imageBase64 } }
           ]
         }],
-        generationConfig: { responseModalities: ['TEXT', 'IMAGE'] }
-      };
-    } else {
-      // Use Imagen 3 Fast (verified working endpoint)
-      url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${activeKey}`;
-      payload = {
-        instances: [{ prompt: prompt }],
-        parameters: { 
-          sampleCount: 1,
-          aspectRatio: "1:1"
+        config: {
+          responseModalities: ['IMAGE'],
+          imageConfig: { 
+            aspectRatio: '1:1',
+            numberOfImages: 1 
+          }
         }
-      };
-    }
+      });
 
-    console.log('Request URL:', url.replace(activeKey, 'REDACTED'));
-    console.log('Request payload:', JSON.stringify(payload, null, 2));
+      const candidate = response.candidates[0];
+      let finalImageBase64;
+      
+      for (const part of candidate.content.parts) {
+        if (part.inlineData) {
+          finalImageBase64 = part.inlineData.data;
+          break;
+        }
+      }
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+      if (!finalImageBase64) {
+        throw new Error("No image data returned from Gemini.");
+      }
 
-    const responseText = await response.text();
+      return { imageData: finalImageBase64 };
 
-    if (!response.ok) {
-      console.error('API Error:', response.status, responseText);
-      throw new Error(`API Error: ${response.status} - ${responseText}`);
-    }
-
-    let result;
-    try {
-      result = JSON.parse(responseText);
-      console.log('API Response structure:', JSON.stringify(result, null, 2).substring(0, 500));
-    } catch (parseError) {
-      console.error('Failed to parse JSON response:', responseText);
-      throw new Error('Invalid JSON response from API');
-    }
-
-    let finalImageBase64;
-
-    if (isEdit) {
-      // Extract from Gemini response
-      console.log('Extracting from Gemini response...');
-      console.log('Candidates:', result.candidates);
-      finalImageBase64 = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
     } else {
-      // Extract from Imagen response
-      console.log('Extracting from Imagen response...');
-      console.log('Predictions:', result.predictions);
-      finalImageBase64 = result.predictions?.[0]?.bytesBase64Encoded;
-    }
+      // Use Gemini 2.5 Flash for text-to-image generation
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image',
+        contents: prompt,
+        config: {
+          responseModalities: ['IMAGE'],
+          imageConfig: { 
+            aspectRatio: '1:1',
+            numberOfImages: 1 
+          }
+        }
+      });
 
-    if (!finalImageBase64) {
-      console.error('Full API Response:', JSON.stringify(result, null, 2));
-      console.error('isEdit:', isEdit);
-      console.error('Response keys:', Object.keys(result));
-      throw new Error("No image data returned.");
-    }
+      const candidate = response.candidates[0];
+      let finalImageBase64;
+      
+      for (const part of candidate.content.parts) {
+        if (part.inlineData) {
+          finalImageBase64 = part.inlineData.data;
+          break;
+        }
+      }
 
-    return { imageData: finalImageBase64 };
+      if (!finalImageBase64) {
+        console.error('Full response:', JSON.stringify(response, null, 2));
+        throw new Error("No image data returned from Gemini.");
+      }
+
+      return { imageData: finalImageBase64 };
+    }
     
   } catch (error) {
     console.error('Generation Error:', error);
