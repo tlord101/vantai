@@ -233,6 +233,81 @@ app.post('/api/generate', async (req, res) => {
   }
 });
 
+// Generate video endpoint
+app.post('/api/generate-video', async (req, res) => {
+  try {
+    const { prompt, userId, customKey, imageBase64, imageMime } = req.body;
+
+    if (!prompt) {
+      return res.status(400).json({
+        success: false,
+        error: 'Prompt is required'
+      });
+    }
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        error: 'User ID is required'
+      });
+    }
+
+    const activeKey = customKey || process.env.GOOGLE_GEN_API_KEY;
+    const ai = new GoogleGenerativeAI(activeKey);
+    const model = ai.getGenerativeModel({ model: 'veo-3.0-fast-generate-preview' });
+
+    let contents;
+    
+    if (imageBase64) {
+      // With reference image
+      contents = [{
+        parts: [
+          { text: prompt },
+          { inlineData: { mimeType: imageMime || 'image/png', data: imageBase64 } }
+        ]
+      }];
+    } else {
+      // Text-to-video only
+      contents = [{ parts: [{ text: prompt }] }];
+    }
+
+    const response = await model.generateContent({
+      contents,
+      generationConfig: {
+        responseModalities: ['VIDEO']
+      }
+    });
+
+    const candidate = response.response.candidates[0];
+    let videoBase64;
+
+    // Extract video data from response
+    for (const part of candidate.content.parts) {
+      if (part.inlineData && part.inlineData.mimeType?.startsWith('video/')) {
+        videoBase64 = part.inlineData.data;
+        break;
+      }
+    }
+
+    if (!videoBase64) {
+      console.error('Full Veo response:', JSON.stringify(response.response, null, 2));
+      throw new Error("No video data returned from Veo.");
+    }
+
+    res.json({
+      success: true,
+      videoData: videoBase64
+    });
+
+  } catch (error) {
+    console.error('Video generation error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to generate video'
+    });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
