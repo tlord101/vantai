@@ -92,7 +92,10 @@ async function generateImage(requestData) {
 
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.GOOGLE_GEN_AI_KEY}`
+      },
       body: JSON.stringify(payload)
     });
 
