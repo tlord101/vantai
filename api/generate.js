@@ -88,9 +88,17 @@ async function generateImage(requestData) {
       url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${activeKey}`;
       payload = {
         instances: [{ prompt: prompt }],
-        parameters: { sampleCount: 1 }
+        parameters: { 
+          sampleCount: 1,
+          aspectRatio: "1:1",
+          negativePrompt: "",
+          seed: 0
+        }
       };
     }
+
+    console.log('Request URL:', url.replace(activeKey, 'REDACTED'));
+    console.log('Request payload:', JSON.stringify(payload, null, 2));
 
     const response = await fetch(url, {
       method: 'POST',
