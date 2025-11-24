@@ -85,19 +85,45 @@ class RequestQueue {
         throw new Error('Image editing is currently not available. Please use text-to-image generation.');
       }
       
-      // Use Pollinations.ai API (free, no authentication required)
-      const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&nologo=true`;
+      // Use Imagen 4.0 with Google AI API
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:generateImages?key=${activeKey}`;
       
-      const response = await fetch(pollinationsUrl);
-      
+      const payload = {
+        prompt: prompt,
+        numberofImages: 1,
+        aspectRatio: "1:1",
+        safetySetting: "block_low_and_above",
+        personGeneration: "allow_adult"
+      };
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
       if (!response.ok) {
-        throw new Error(`Image generation failed: ${response.status}`);
+        const errorText = await response.text();
+        console.error('Imagen 4.0 API Error:', response.status, errorText);
+        throw new Error(`Imagen 4.0 API Error: ${response.status} - ${errorText}`);
       }
+
+      const result = await response.json();
+      console.log('Imagen 4.0 Response keys:', Object.keys(result));
       
-      const imageBuffer = await response.arrayBuffer();
-      const base64Image = Buffer.from(imageBuffer).toString('base64');
-      
-      return { imageData: base64Image };
+      // Extract image from Imagen 4.0 response
+      const imageBase64 = result.generatedImages?.[0]?.bytesBase64Encoded || 
+                         result.images?.[0]?.bytesBase64Encoded ||
+                         result.predictions?.[0]?.bytesBase64Encoded;
+
+      if (!imageBase64) {
+        console.error('Full Imagen 4.0 Response:', JSON.stringify(result));
+        throw new Error("No image data in Imagen 4.0 response.");
+      }
+
+      return { imageData: imageBase64 };
       
     } catch (error) {
       console.error('Generation Error:', error);
