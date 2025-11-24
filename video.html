@@ -67,8 +67,8 @@
                     <p class="text-sm text-gray-600">Powered by Google Veo 3.0 Fast</p>
                 </div>
                 <div class="text-right">
-                    <p class="text-3xl font-bold text-purple-600">5 Nano</p>
-                    <p class="text-sm text-gray-600">per video</p>
+                    <p class="text-3xl font-bold text-green-600">Free</p>
+                    <p class="text-sm text-gray-600">Beta Preview</p>
                 </div>
             </div>
         </div>
@@ -143,7 +143,7 @@
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                 </span>
-                <span id="generateBtnText">Generate Video (5 Nano)</span>
+                <span id="generateBtnText">Generate Video (Free)</span>
             </button>
 
             <!-- Queue Message -->
@@ -202,7 +202,7 @@
         import { getFirestore, doc, getDoc, updateDoc, increment } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
         const APP_ID = 'nano-banana';
-        const COST_PER_GEN = 5;
+        const COST_PER_GEN = 0;
         const DEFAULT_GEN_API_KEY = '';
 
         let currentUser = null;
@@ -384,20 +384,6 @@
                 return;
             }
 
-            // Check credits
-            const userRef = doc(db, 'artifacts', APP_ID, 'users', currentUser.uid, 'account', 'balance');
-            const userDoc = await getDoc(userRef);
-            const credits = userDoc.exists() ? userDoc.data().credits || 0 : 0;
-
-            if (credits < COST_PER_GEN) {
-                showToast('error', `Insufficient credits. You need ${COST_PER_GEN} Nano.`);
-                return;
-            }
-
-            // Deduct credits
-            await updateDoc(userRef, { credits: increment(-COST_PER_GEN) });
-            await updateCreditsDisplay();
-
             // UI updates
             els.generateBtn.disabled = true;
             els.generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
@@ -448,15 +434,12 @@
             } catch (err) {
                 console.error(err);
                 showToast('error', err.message || "Generation Failed");
-                // Refund
-                await updateDoc(userRef, { credits: increment(COST_PER_GEN) });
-                await updateCreditsDisplay();
             } finally {
                 els.generateBtn.disabled = false;
                 els.generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                 els.generateIcon.classList.remove('hidden');
                 els.generateLoader.classList.add('hidden');
-                els.generateBtnText.innerText = `Generate Video (${COST_PER_GEN} Nano)`;
+                els.generateBtnText.innerText = 'Generate Video (Free)';
                 els.queueMessage.classList.add('hidden');
             }
         };
