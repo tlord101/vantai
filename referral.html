@@ -410,11 +410,32 @@
         async function loadConfig() {
             try {
                 const response = await fetch(`${API_BASE_URL}/api/config`);
+                if (!response.ok) {
+                    throw new Error(`API returned status ${response.status}`);
+                }
                 const config = await response.json();
                 firebaseConfig = config.firebase;
                 return config;
             } catch (error) {
-                showToast('error', 'Failed to load configuration');
+                showToast('error', 'Failed to load configuration. Please check your network or server.');
+                // Show a visible error message and hide the loading UI
+                const authView = document.getElementById('auth-view');
+                if (authView) {
+                    authView.innerHTML = `
+                        <div class="flex flex-col items-center justify-center min-h-screen p-8">
+                            <div class="bg-red-900/40 border border-red-500/30 rounded-2xl p-8 shadow-xl">
+                                <h2 class="text-2xl font-bold text-red-400 mb-4 flex items-center gap-2">
+                                    <i data-lucide='alert-triangle' class='w-7 h-7'></i>
+                                    Error Loading App
+                                </h2>
+                                <p class="text-red-200 mb-2">Could not load configuration from <code class='bg-red-950 px-2 py-1 rounded'>/api/config</code>.</p>
+                                <p class="text-red-300 mb-4">Check that your backend server is running and accessible.</p>
+                                <button onclick="window.location.reload()" class="mt-2 px-6 py-2 bg-red-500/80 hover:bg-red-500 text-white rounded-lg font-bold">Retry</button>
+                            </div>
+                        </div>
+                    `;
+                    if (window.lucide) lucide.createIcons();
+                }
                 throw error;
             }
         }
