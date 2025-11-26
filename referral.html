@@ -460,64 +460,39 @@
                 };
             }
 
-            // Copy link button
+            // Copy link button - Simple and clean implementation
             if (els.copyLinkBtn) {
-                els.copyLinkBtn.onclick = async () => {
-                    try {
-                        const linkToCopy = els.referralLink.value;
-                        
-                        if (!linkToCopy || linkToCopy === 'Loading...') {
-                            showToast('error', 'Referral link not ready yet');
-                            return;
-                        }
-                        
-                        // Try modern clipboard API first
-                        if (navigator.clipboard && navigator.clipboard.writeText) {
-                            try {
-                                await navigator.clipboard.writeText(linkToCopy);
-                                showToast('success', 'Referral link copied to clipboard!');
-                                
-                                // Visual feedback on button
-                                const originalHTML = els.copyLinkBtn.innerHTML;
-                                els.copyLinkBtn.innerHTML = `
-                                    <i data-lucide="check" class="w-5 h-5"></i>
-                                    Copied!
-                                `;
+                els.copyLinkBtn.addEventListener("click", function () {
+                    const input = els.referralLink;
+
+                    // Select text
+                    input.select();
+                    input.setSelectionRange(0, 99999); // for mobile
+
+                    // Copy to clipboard
+                    navigator.clipboard.writeText(input.value)
+                        .then(() => {
+                            // Show success toast
+                            showToast('success', 'Referral link copied to clipboard!');
+                            
+                            // Visual feedback on button
+                            const originalHTML = this.innerHTML;
+                            this.innerHTML = `
+                                <i data-lucide="check" class="w-5 h-5"></i>
+                                Copied!
+                            `;
+                            lucide.createIcons();
+                            
+                            setTimeout(() => {
+                                this.innerHTML = originalHTML;
                                 lucide.createIcons();
-                                
-                                setTimeout(() => {
-                                    els.copyLinkBtn.innerHTML = originalHTML;
-                                    lucide.createIcons();
-                                }, 2000);
-                                
-                            } catch (clipboardError) {
-                                console.error('Clipboard API failed, trying fallback:', clipboardError);
-                                copyWithFallback(linkToCopy);
-                            }
-                        } else {
-                            // Fallback for older browsers
-                            copyWithFallback(linkToCopy);
-                        }
-                        
-                        // Track when user copies the link
-                        if (currentUser) {
-                            try {
-                                const userId = currentUser.uid;
-                                const referralDocRef = doc(db, 'artifacts', APP_ID, 'referrals', userId);
-                                const now = new Date().toISOString();
-                                
-                                await updateDoc(referralDocRef, {
-                                    lastCopied: now
-                                });
-                            } catch (trackError) {
-                                console.error('Error tracking copy:', trackError);
-                            }
-                        }
-                    } catch (error) {
-                        console.error('Copy error:', error);
-                        showToast('error', 'Failed to copy link');
-                    }
-                };
+                            }, 2000);
+                        })
+                        .catch(err => {
+                            console.error("Failed to copy: ", err);
+                            showToast('error', 'Failed to copy link');
+                        });
+                });
             }
         }
 
@@ -851,58 +826,6 @@
             }).join('');
 
             lucide.createIcons();
-        }
-
-        // Fallback copy function for older browsers or when clipboard API fails
-        function copyWithFallback(text) {
-            try {
-                // Create a temporary textarea
-                const textarea = document.createElement('textarea');
-                textarea.value = text;
-                textarea.style.position = 'fixed';
-                textarea.style.top = '0';
-                textarea.style.left = '0';
-                textarea.style.width = '2em';
-                textarea.style.height = '2em';
-                textarea.style.padding = '0';
-                textarea.style.border = 'none';
-                textarea.style.outline = 'none';
-                textarea.style.boxShadow = 'none';
-                textarea.style.background = 'transparent';
-                document.body.appendChild(textarea);
-                
-                // Select and copy
-                textarea.focus();
-                textarea.select();
-                textarea.setSelectionRange(0, 99999); // For mobile devices
-                
-                const successful = document.execCommand('copy');
-                document.body.removeChild(textarea);
-                
-                if (successful) {
-                    showToast('success', 'Referral link copied to clipboard!');
-                    
-                    // Visual feedback on button
-                    const originalHTML = els.copyLinkBtn.innerHTML;
-                    els.copyLinkBtn.innerHTML = `
-                        <i data-lucide="check" class="w-5 h-5"></i>
-                        Copied!
-                    `;
-                    lucide.createIcons();
-                    
-                    setTimeout(() => {
-                        els.copyLinkBtn.innerHTML = originalHTML;
-                        lucide.createIcons();
-                    }, 2000);
-                } else {
-                    throw new Error('Copy command failed');
-                }
-            } catch (fallbackError) {
-                console.error('Fallback copy failed:', fallbackError);
-                showToast('error', 'Unable to copy. Please select and copy the link manually.');
-                // Select the input field so user can manually copy
-                els.referralLink.select();
-            }
         }
 
         // Init Firebase and Icons
