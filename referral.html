@@ -456,12 +456,15 @@
         // --- App State Listener ---
         function setupAuthListener() {
             onAuthStateChanged(auth, async (user) => {
+                console.log('Auth state changed:', user ? user.uid : 'No user');
                 if (user) {
                     currentUser = user;
                     views.auth.classList.add('hidden');
                     views.referral.classList.remove('hidden');
+                    console.log('User authenticated, loading referral data...');
                     await loadReferralData();
                 } else {
+                    console.log('No user authenticated, redirecting to main app...');
                     // No user logged in - redirect to main app
                     showToast('info', 'Please sign in to view referrals');
                     setTimeout(() => {
@@ -522,7 +525,22 @@
                         console.log('Referral data updated:', doc.data());
                         const data = doc.data();
                         updateDashboard(data);
+                    } else {
+                        console.log('No referral document yet, using default values');
+                        // Initialize with zeros if document doesn't exist yet
+                        updateDashboard({
+                            clicks: 0,
+                            signups: 0,
+                            successful: 0,
+                            earnings: 0,
+                            clickHistory: [],
+                            signupHistory: [],
+                            successHistory: []
+                        });
                     }
+                }, (error) => {
+                    console.error('Snapshot error:', error);
+                    showToast('error', 'Error listening to referral updates: ' + error.message);
                 });
 
                 // Load referral details
@@ -539,9 +557,9 @@
 
         // --- Update Dashboard ---
         function updateDashboard(data) {
-            const clicks = data.clicks || 0;
-            const signups = data.signups || 0;
-            const successful = data.successful || 0;
+            const clicks = data?.clicks || 0;
+            const signups = data?.signups || 0;
+            const successful = data?.successful || 0;
             const earnings = successful * REWARD_PER_REFERRAL;
 
             els.statClicks.textContent = clicks;
@@ -549,7 +567,7 @@
             els.statSuccessful.textContent = successful;
             els.totalEarnings.textContent = earnings.toLocaleString();
 
-            updateChart(data);
+            updateChart(data || {});
         }
 
         // --- Update Chart ---
@@ -665,10 +683,38 @@
                     });
 
                     renderReferralsTable(referrals);
+                }, (error) => {
+                    console.error('Error in referrals snapshot:', error);
+                    // Show empty state on error
+                    els.referralsTableBody.innerHTML = `
+                        <tr>
+                            <td colspan="4" class="text-center py-8 text-neutral-500">
+                                <div class="flex flex-col items-center gap-2">
+                                    <i data-lucide="inbox" class="w-12 h-12 text-neutral-600"></i>
+                                    <p>No referrals yet</p>
+                                    <p class="text-sm text-neutral-600">Start sharing your link to earn rewards!</p>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                    lucide.createIcons();
                 });
 
             } catch (error) {
                 console.error('Error loading referrals list:', error);
+                // Show empty state on error
+                els.referralsTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="text-center py-8 text-neutral-500">
+                            <div class="flex flex-col items-center gap-2">
+                                <i data-lucide="inbox" class="w-12 h-12 text-neutral-600"></i>
+                                <p>No referrals yet</p>
+                                <p class="text-sm text-neutral-600">Start sharing your link to earn rewards!</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                lucide.createIcons();
             }
         }
 
@@ -730,13 +776,17 @@
                 });
             } catch (error) {
                 showToast('error', 'Failed to copy link');
-            }
-        };
-
         // Init Firebase and Icons
         initFirebase().then(() => {
+            console.log('Firebase initialized successfully');
+            console.log('Auth:', auth);
+            console.log('DB:', db);
             setupAuthListener();
             lucide.createIcons();
+        }).catch(err => {
+            console.error('Firebase initialization error:', err);
+            showToast('error', 'Failed to initialize app: ' + err.message);
+        }); lucide.createIcons();
         }).catch(err => {
             showToast('error', 'Failed to initialize app: ' + err.message);
         });
