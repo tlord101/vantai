@@ -181,32 +181,14 @@
                 </div>
 
                 <h1 class="text-3xl font-bold text-center text-white mb-2">Referral Dashboard</h1>
-                <p class="text-center text-neutral-400 mb-6">Sign in to view your referral stats</p>
+                <p class="text-center text-neutral-400 mb-6">Checking your session...</p>
 
-                <!-- Email Form -->
-                <form id="auth-form" class="space-y-4">
-                    <div>
-                        <label class="block text-xs font-bold text-neutral-500 uppercase mb-1">Email</label>
-                        <input type="email" id="email-input" required
-                            class="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white focus:border-yellow-400 outline-none transition-colors"
-                            placeholder="your@email.com">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-neutral-500 uppercase mb-1">Password</label>
-                        <input type="password" id="password-input" required
-                            class="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white focus:border-yellow-400 outline-none transition-colors"
-                            placeholder="••••••••">
-                    </div>
-
-                    <button type="submit" id="submit-auth-btn"
-                        class="w-full bg-white text-neutral-900 font-bold h-12 rounded-xl flex items-center justify-center gap-2 hover:bg-neutral-200 transition-colors shadow-lg">
-                        <span id="auth-btn-text">Sign In</span>
-                        <div id="auth-loader" class="loader hidden"
-                            style="border-left-color: #000; border-color: rgba(0,0,0,0.1);"></div>
-                    </button>
-                </form>
-
-                <p id="auth-error" class="text-red-400 text-center text-sm mt-4 hidden"></p>
+                <!-- Loading State -->
+                <div class="flex flex-col items-center gap-4 py-8">
+                    <div class="loader w-12 h-12 border-4"></div>
+                    <p class="text-neutral-500 text-sm">Loading your referral data...</p>
+                    <p class="text-neutral-600 text-xs">If you're not signed in, you'll be redirected to the main app</p>
+                </div>
             </div>
         </div>
 
@@ -224,11 +206,18 @@
                         </h1>
                     </div>
 
-                    <button id="logout-btn"
-                        class="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-full transition-colors text-red-400">
-                        <i data-lucide="log-out" class="w-4 h-4"></i>
-                        <span class="text-sm font-bold">Logout</span>
-                    </button>
+                    <div class="flex items-center gap-3">
+                        <a href="/"
+                            class="flex items-center gap-2 px-4 py-2 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 rounded-full transition-colors text-yellow-400">
+                            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                            <span class="text-sm font-bold hidden sm:inline">Back to App</span>
+                        </a>
+                        <button id="logout-btn"
+                            class="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-full transition-colors text-red-400">
+                            <i data-lucide="log-out" class="w-4 h-4"></i>
+                            <span class="text-sm font-bold hidden sm:inline">Logout</span>
+                        </button>
+                    </div>
                 </div>
             </header>
 
@@ -448,13 +437,6 @@
         };
 
         const els = {
-            authForm: document.getElementById('auth-form'),
-            emailInput: document.getElementById('email-input'),
-            passInput: document.getElementById('password-input'),
-            submitAuthBtn: document.getElementById('submit-auth-btn'),
-            authBtnText: document.getElementById('auth-btn-text'),
-            authLoader: document.getElementById('auth-loader'),
-            authError: document.getElementById('auth-error'),
             logoutBtn: document.getElementById('logout-btn'),
             referralLink: document.getElementById('referral-link'),
             copyLinkBtn: document.getElementById('copy-link-btn'),
@@ -465,38 +447,11 @@
             referralsTableBody: document.getElementById('referrals-table-body')
         };
 
-        // --- Auth Logic ---
-        els.authForm.onsubmit = async (e) => {
-            e.preventDefault();
-            const email = els.emailInput.value;
-            const password = els.passInput.value;
-
-            setAuthLoading(true);
-            try {
-                await signInWithEmailAndPassword(auth, email, password);
-            } catch (error) {
-                showAuthError('Invalid credentials. Please try again.');
-                setAuthLoading(false);
-            }
+        els.logoutBtn.onclick = () => {
+            signOut(auth).then(() => {
+                window.location.href = '/';
+            });
         };
-
-        function setAuthLoading(loading) {
-            els.submitAuthBtn.disabled = loading;
-            if (loading) {
-                els.authBtnText.classList.add('hidden');
-                els.authLoader.classList.remove('hidden');
-            } else {
-                els.authBtnText.classList.remove('hidden');
-                els.authLoader.classList.add('hidden');
-            }
-        }
-
-        function showAuthError(msg) {
-            els.authError.innerText = msg;
-            els.authError.classList.remove('hidden');
-        }
-
-        els.logoutBtn.onclick = () => signOut(auth);
 
         // --- App State Listener ---
         function setupAuthListener() {
@@ -507,14 +462,11 @@
                     views.referral.classList.remove('hidden');
                     await loadReferralData();
                 } else {
-                    currentUser = null;
-                    if (referralsUnsubscribe) {
-                        referralsUnsubscribe();
-                        referralsUnsubscribe = null;
-                    }
-                    views.auth.classList.remove('hidden');
-                    views.referral.classList.add('hidden');
-                    setAuthLoading(false);
+                    // No user logged in - redirect to main app
+                    showToast('info', 'Please sign in to view referrals');
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1500);
                 }
             });
         }
