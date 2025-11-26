@@ -678,11 +678,15 @@
 
             const chartElement = document.getElementById('referralChart');
             if (!chartElement) {
-                console.error('Chart element not found');
+                console.warn('Chart element not found - view may not be visible yet');
                 return;
             }
             
             const ctx = chartElement.getContext('2d');
+            if (!ctx) {
+                console.warn('Could not get chart context');
+                return;
+            }
             
             if (referralChart) {
                 referralChart.destroy();
