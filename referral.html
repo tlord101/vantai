@@ -523,10 +523,12 @@
                     views.referral.classList.remove('hidden');
                     console.log('User authenticated, loading referral data...');
                     
-                    // Wait for DOM to be fully rendered before setting up event listeners
-                    setTimeout(() => {
-                        setupEventListeners();
-                    }, 100);
+                    // Use requestAnimationFrame to ensure DOM is fully rendered
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            setupEventListeners();
+                        });
+                    });
                     
                     await loadReferralData();
                 } else {
