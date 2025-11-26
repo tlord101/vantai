@@ -365,7 +365,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-        import { getFirestore, collection, getDocs, doc, getDoc, setDoc, updateDoc, increment, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, doc, getDoc, setDoc, updateDoc, increment, query, where, orderBy, onSnapshot, arrayUnion, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
         // --- Toast Notification System ---
         function showToast(type, message, duration = 5000) {
@@ -500,7 +500,7 @@
                         signups: 0,
                         successful: 0,
                         earnings: 0,
-                        createdAt: new Date(),
+                        createdAt: Timestamp.now(),
                         clickHistory: [],
                         signupHistory: [],
                         successHistory: []
