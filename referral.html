@@ -776,9 +776,6 @@
                 });
             } catch (error) {
                 showToast('error', 'Failed to copy link');
-            }
-        };
-
         // Init Firebase and Icons
         initFirebase().then(() => {
             console.log('Firebase initialized successfully');
@@ -788,9 +785,6 @@
             lucide.createIcons();
         }).catch(err => {
             console.error('Firebase initialization error:', err);
-            showToast('error', 'Failed to initialize app: ' + err.message);
-        }); lucide.createIcons();
-        }).catch(err => {
             showToast('error', 'Failed to initialize app: ' + err.message);
         });
 
