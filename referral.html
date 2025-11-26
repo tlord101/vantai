@@ -491,8 +491,13 @@
                 console.log('Referral code:', referralCode);
                 
                 // Set referral link
-                const referralUrl = `${window.location.origin}/?ref=${referralCode}`;
+                const baseUrl = window.location.origin;
+                const referralUrl = `${baseUrl}/?ref=${referralCode}`;
+                console.log('Base URL:', baseUrl);
+                console.log('Full referral URL:', referralUrl);
+                console.log('Referral link element:', els.referralLink);
                 els.referralLink.value = referralUrl;
+                console.log('Referral link set to:', els.referralLink.value);
 
                 // Initialize or get referral document
                 const referralDocRef = doc(db, 'artifacts', APP_ID, 'referrals', userId);
