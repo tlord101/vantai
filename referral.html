@@ -793,27 +793,34 @@
                 
                 // Try modern clipboard API first
                 if (navigator.clipboard && navigator.clipboard.writeText) {
-                    await navigator.clipboard.writeText(linkToCopy);
-                    console.log('Successfully copied with clipboard API:', linkToCopy);
+                    try {
+                        await navigator.clipboard.writeText(linkToCopy);
+                        console.log('Successfully copied with clipboard API:', linkToCopy);
+                        showToast('success', 'Referral link copied to clipboard!');
+                    } catch (clipboardError) {
+                        console.error('Clipboard API failed, trying fallback:', clipboardError);
+                        // Try fallback
+                        copyWithFallback(linkToCopy);
+                    }
                 } else {
                     // Fallback for older browsers
-                    els.referralLink.select();
-                    els.referralLink.setSelectionRange(0, 99999);
-                    document.execCommand('copy');
-                    console.log('Successfully copied with execCommand:', linkToCopy);
+                    copyWithFallback(linkToCopy);
                 }
-                
-                showToast('success', 'Referral link copied to clipboard!');
                 
                 // Track click (optional - you could track when user copies)
                 if (currentUser) {
-                    const userId = currentUser.uid;
-                    const referralDocRef = doc(db, 'artifacts', APP_ID, 'referrals', userId);
-                    const now = new Date().toISOString();
-                    
-                    await updateDoc(referralDocRef, {
-                        lastCopied: now
-                    });
+                    try {
+                        const userId = currentUser.uid;
+                        const referralDocRef = doc(db, 'artifacts', APP_ID, 'referrals', userId);
+                        const now = new Date().toISOString();
+                        
+                        await updateDoc(referralDocRef, {
+                            lastCopied: now
+                        });
+                    } catch (trackError) {
+                        console.error('Error tracking copy:', trackError);
+                        // Don't show error to user, tracking is optional
+                    }
                 }
             } catch (error) {
                 console.error('Copy error:', error);
@@ -821,6 +828,44 @@
                 showToast('error', 'Failed to copy link: ' + error.message);
             }
         };
+
+        // Fallback copy function for older browsers or when clipboard API fails
+        function copyWithFallback(text) {
+            try {
+                // Create a temporary textarea
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.style.position = 'fixed';
+                textarea.style.top = '0';
+                textarea.style.left = '0';
+                textarea.style.width = '2em';
+                textarea.style.height = '2em';
+                textarea.style.padding = '0';
+                textarea.style.border = 'none';
+                textarea.style.outline = 'none';
+                textarea.style.boxShadow = 'none';
+                textarea.style.background = 'transparent';
+                document.body.appendChild(textarea);
+                
+                // Select and copy
+                textarea.focus();
+                textarea.select();
+                textarea.setSelectionRange(0, 99999); // For mobile devices
+                
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textarea);
+                
+                if (successful) {
+                    console.log('Successfully copied with fallback method:', text);
+                    showToast('success', 'Referral link copied to clipboard!');
+                } else {
+                    throw new Error('execCommand failed');
+                }
+            } catch (fallbackError) {
+                console.error('Fallback copy failed:', fallbackError);
+                showToast('error', 'Copy failed. Please manually select and copy the link.');
+            }
+        }
 
         // Init Firebase and Icons
         initFirebase().then(() => {
