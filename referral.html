@@ -241,8 +241,10 @@
 
                     <div class="flex gap-2 flex-col sm:flex-row">
                         <input type="text" id="referral-link" readonly
-                            class="flex-1 bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white focus:border-yellow-400 outline-none transition-colors font-mono text-sm"
-                            value="Loading...">
+                            class="flex-1 bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white focus:border-yellow-400 outline-none transition-colors font-mono text-sm select-all cursor-pointer"
+                            value="Loading..."
+                            placeholder="Your referral link will appear here..."
+                            onclick="this.select()">
                         <button id="copy-link-btn"
                             class="bg-yellow-400 hover:bg-yellow-300 text-neutral-900 px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all whitespace-nowrap">
                             <i data-lucide="copy" class="w-5 h-5"></i>
@@ -768,19 +770,31 @@
         // --- Copy Link ---
         els.copyLinkBtn.onclick = async () => {
             try {
-                await navigator.clipboard.writeText(els.referralLink.value);
+                const linkToCopy = els.referralLink.value;
+                console.log('Attempting to copy:', linkToCopy);
+                
+                if (!linkToCopy || linkToCopy === 'Loading...') {
+                    showToast('error', 'Referral link not ready yet');
+                    return;
+                }
+                
+                await navigator.clipboard.writeText(linkToCopy);
+                console.log('Successfully copied:', linkToCopy);
                 showToast('success', 'Referral link copied to clipboard!');
                 
                 // Track click (optional - you could track when user copies)
-                const userId = currentUser.uid;
-                const referralDocRef = doc(db, 'artifacts', APP_ID, 'referrals', userId);
-                const now = new Date().toISOString();
-                
-                await updateDoc(referralDocRef, {
-                    lastCopied: now
-                });
+                if (currentUser) {
+                    const userId = currentUser.uid;
+                    const referralDocRef = doc(db, 'artifacts', APP_ID, 'referrals', userId);
+                    const now = new Date().toISOString();
+                    
+                    await updateDoc(referralDocRef, {
+                        lastCopied: now
+                    });
+                }
             } catch (error) {
-                showToast('error', 'Failed to copy link');
+                console.error('Copy error:', error);
+                showToast('error', 'Failed to copy link: ' + error.message);
             }
         };
 
