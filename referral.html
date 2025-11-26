@@ -449,11 +449,77 @@
             referralsTableBody: document.getElementById('referrals-table-body')
         };
 
-        els.logoutBtn.onclick = () => {
-            signOut(auth).then(() => {
-                window.location.href = '/';
-            });
-        };
+        // --- Setup Event Listeners ---
+        function setupEventListeners() {
+            // Logout button
+            if (els.logoutBtn) {
+                els.logoutBtn.onclick = () => {
+                    signOut(auth).then(() => {
+                        window.location.href = '/';
+                    });
+                };
+            }
+
+            // Copy link button
+            if (els.copyLinkBtn) {
+                els.copyLinkBtn.onclick = async () => {
+                    try {
+                        const linkToCopy = els.referralLink.value;
+                        
+                        if (!linkToCopy || linkToCopy === 'Loading...') {
+                            showToast('error', 'Referral link not ready yet');
+                            return;
+                        }
+                        
+                        // Try modern clipboard API first
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                            try {
+                                await navigator.clipboard.writeText(linkToCopy);
+                                showToast('success', 'Referral link copied to clipboard!');
+                                
+                                // Visual feedback on button
+                                const originalHTML = els.copyLinkBtn.innerHTML;
+                                els.copyLinkBtn.innerHTML = `
+                                    <i data-lucide="check" class="w-5 h-5"></i>
+                                    Copied!
+                                `;
+                                lucide.createIcons();
+                                
+                                setTimeout(() => {
+                                    els.copyLinkBtn.innerHTML = originalHTML;
+                                    lucide.createIcons();
+                                }, 2000);
+                                
+                            } catch (clipboardError) {
+                                console.error('Clipboard API failed, trying fallback:', clipboardError);
+                                copyWithFallback(linkToCopy);
+                            }
+                        } else {
+                            // Fallback for older browsers
+                            copyWithFallback(linkToCopy);
+                        }
+                        
+                        // Track when user copies the link
+                        if (currentUser) {
+                            try {
+                                const userId = currentUser.uid;
+                                const referralDocRef = doc(db, 'artifacts', APP_ID, 'referrals', userId);
+                                const now = new Date().toISOString();
+                                
+                                await updateDoc(referralDocRef, {
+                                    lastCopied: now
+                                });
+                            } catch (trackError) {
+                                console.error('Error tracking copy:', trackError);
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Copy error:', error);
+                        showToast('error', 'Failed to copy link');
+                    }
+                };
+            }
+        }
 
         // --- App State Listener ---
         function setupAuthListener() {
@@ -464,6 +530,7 @@
                     views.auth.classList.add('hidden');
                     views.referral.classList.remove('hidden');
                     console.log('User authenticated, loading referral data...');
+                    setupEventListeners(); // Setup event listeners after view is visible
                     await loadReferralData();
                 } else {
                     console.log('No user authenticated, redirecting to main app...');
@@ -781,64 +848,6 @@
 
             lucide.createIcons();
         }
-
-        // --- Copy Link ---
-        els.copyLinkBtn.onclick = async () => {
-            try {
-                const linkToCopy = els.referralLink.value;
-                
-                if (!linkToCopy || linkToCopy === 'Loading...') {
-                    showToast('error', 'Referral link not ready yet');
-                    return;
-                }
-                
-                // Try modern clipboard API first
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    try {
-                        await navigator.clipboard.writeText(linkToCopy);
-                        showToast('success', 'Referral link copied to clipboard!');
-                        
-                        // Visual feedback on button
-                        const originalHTML = els.copyLinkBtn.innerHTML;
-                        els.copyLinkBtn.innerHTML = `
-                            <i data-lucide="check" class="w-5 h-5"></i>
-                            Copied!
-                        `;
-                        lucide.createIcons();
-                        
-                        setTimeout(() => {
-                            els.copyLinkBtn.innerHTML = originalHTML;
-                            lucide.createIcons();
-                        }, 2000);
-                        
-                    } catch (clipboardError) {
-                        console.error('Clipboard API failed, trying fallback:', clipboardError);
-                        copyWithFallback(linkToCopy);
-                    }
-                } else {
-                    // Fallback for older browsers
-                    copyWithFallback(linkToCopy);
-                }
-                
-                // Track when user copies the link
-                if (currentUser) {
-                    try {
-                        const userId = currentUser.uid;
-                        const referralDocRef = doc(db, 'artifacts', APP_ID, 'referrals', userId);
-                        const now = new Date().toISOString();
-                        
-                        await updateDoc(referralDocRef, {
-                            lastCopied: now
-                        });
-                    } catch (trackError) {
-                        console.error('Error tracking copy:', trackError);
-                    }
-                }
-            } catch (error) {
-                console.error('Copy error:', error);
-                showToast('error', 'Failed to copy link');
-            }
-        };
 
         // Fallback copy function for older browsers or when clipboard API fails
         function copyWithFallback(text) {
