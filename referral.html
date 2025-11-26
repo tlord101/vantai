@@ -452,13 +452,13 @@
         // --- Setup Event Listeners ---
         function setupEventListeners() {
             console.log("Setting up event listeners..."); // Debug log
-            console.log("Referral view hidden?", views.referral.classList.contains('hidden'));
+            console.log("Referral view exists?", !!views.referral);
+            console.log("Referral view hidden?", views.referral?.classList.contains('hidden'));
 
             // Query from the referral view container directly
-            const referralView = document.getElementById('referral-view');
-            const logoutBtn = referralView.querySelector('#logout-btn');
-            const copyLinkBtn = referralView.querySelector('#copy-link-btn');
-            const referralInput = referralView.querySelector('#referral-link');
+            const logoutBtn = views.referral.querySelector('#logout-btn');
+            const copyLinkBtn = views.referral.querySelector('#copy-link-btn');
+            const referralInput = views.referral.querySelector('#referral-link');
 
             console.log("Logout button:", logoutBtn);
             console.log("Copy button:", copyLinkBtn);
