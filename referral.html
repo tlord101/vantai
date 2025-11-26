@@ -498,8 +498,17 @@
                 console.log('Base URL:', baseUrl);
                 console.log('Full referral URL:', referralUrl);
                 console.log('Referral link element:', els.referralLink);
-                els.referralLink.value = referralUrl;
-                console.log('Referral link set to:', els.referralLink.value);
+                console.log('Element exists:', !!els.referralLink);
+                
+                if (els.referralLink) {
+                    els.referralLink.value = referralUrl;
+                    // Force DOM update
+                    els.referralLink.setAttribute('value', referralUrl);
+                    console.log('Referral link set to:', els.referralLink.value);
+                    console.log('Attribute value:', els.referralLink.getAttribute('value'));
+                } else {
+                    console.error('Referral link element not found!');
+                }
 
                 // Initialize or get referral document
                 const referralDocRef = doc(db, 'artifacts', APP_ID, 'referrals', userId);
@@ -771,15 +780,29 @@
         els.copyLinkBtn.onclick = async () => {
             try {
                 const linkToCopy = els.referralLink.value;
-                console.log('Attempting to copy:', linkToCopy);
+                console.log('Copy button clicked!');
+                console.log('Link to copy:', linkToCopy);
+                console.log('Element value:', els.referralLink.value);
+                console.log('Clipboard API available:', !!navigator.clipboard);
                 
                 if (!linkToCopy || linkToCopy === 'Loading...') {
+                    console.error('Link not ready:', linkToCopy);
                     showToast('error', 'Referral link not ready yet');
                     return;
                 }
                 
-                await navigator.clipboard.writeText(linkToCopy);
-                console.log('Successfully copied:', linkToCopy);
+                // Try modern clipboard API first
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(linkToCopy);
+                    console.log('Successfully copied with clipboard API:', linkToCopy);
+                } else {
+                    // Fallback for older browsers
+                    els.referralLink.select();
+                    els.referralLink.setSelectionRange(0, 99999);
+                    document.execCommand('copy');
+                    console.log('Successfully copied with execCommand:', linkToCopy);
+                }
+                
                 showToast('success', 'Referral link copied to clipboard!');
                 
                 // Track click (optional - you could track when user copies)
@@ -794,6 +817,7 @@
                 }
             } catch (error) {
                 console.error('Copy error:', error);
+                console.error('Error stack:', error.stack);
                 showToast('error', 'Failed to copy link: ' + error.message);
             }
         };
