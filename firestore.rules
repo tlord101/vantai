@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Existing rules for artifacts/nano-banana-v1/users
+    match /artifacts/nano-banana-v1/users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      match /account/{document=**} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    // Referral system rules
+    match /artifacts/nano-banana-v1/referrals/{userId} {
+      // Users can read and write their own referral data
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Sub-collection for referred users
+      match /referred/{referredUserId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    // Allow users to read other referral codes (for signup tracking)
+    match /artifacts/nano-banana-v1/referrals/{anyUserId} {
+      allow read: if request.auth != null;
+    }
+  }
+}
