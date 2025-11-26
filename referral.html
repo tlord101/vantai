@@ -451,48 +451,64 @@
 
         // --- Setup Event Listeners ---
         function setupEventListeners() {
-            // Logout button
-            if (els.logoutBtn) {
-                els.logoutBtn.onclick = () => {
-                    signOut(auth).then(() => {
-                        window.location.href = '/';
-                    });
+            console.log("Setting up event listeners..."); // Debug log
+
+            // Re-select the elements here to ensure they are found
+            const logoutBtn = document.getElementById('logout-btn');
+            const copyLinkBtn = document.getElementById('copy-link-btn');
+            const referralInput = document.getElementById('referral-link');
+
+            // Setup Logout
+            if (logoutBtn) {
+                logoutBtn.onclick = () => {
+                    signOut(auth).then(() => window.location.href = '/');
                 };
             }
 
-            // Copy link button - Simple and clean implementation
-            if (els.copyLinkBtn) {
-                els.copyLinkBtn.addEventListener("click", function () {
-                    const input = els.referralLink;
+            // Setup Copy Button
+            if (copyLinkBtn && referralInput) {
+                console.log("Copy button found, attaching listener."); // Debug log
+
+                // Store original content to prevent the "Stuck Button" bug
+                const originalContent = copyLinkBtn.innerHTML;
+                let isCopying = false;
+
+                copyLinkBtn.addEventListener("click", function (e) {
+                    e.preventDefault(); // Stop any default form behavior
+                    
+                    if (isCopying) return;
 
                     // Select text
-                    input.select();
-                    input.setSelectionRange(0, 99999); // for mobile
+                    referralInput.select();
+                    referralInput.setSelectionRange(0, 99999); // Mobile fix
 
-                    // Copy to clipboard
-                    navigator.clipboard.writeText(input.value)
+                    navigator.clipboard.writeText(referralInput.value)
                         .then(() => {
-                            // Show success toast
-                            showToast('success', 'Referral link copied to clipboard!');
+                            showToast('success', 'Referral link copied!');
                             
-                            // Visual feedback on button
-                            const originalHTML = this.innerHTML;
-                            this.innerHTML = `
-                                <i data-lucide="check" class="w-5 h-5"></i>
-                                Copied!
-                            `;
+                            isCopying = true;
+                            this.innerHTML = `<i data-lucide="check" class="w-5 h-5"></i> Copied!`;
                             lucide.createIcons();
-                            
+
                             setTimeout(() => {
-                                this.innerHTML = originalHTML;
+                                this.innerHTML = originalContent;
                                 lucide.createIcons();
+                                isCopying = false;
                             }, 2000);
                         })
                         .catch(err => {
-                            console.error("Failed to copy: ", err);
-                            showToast('error', 'Failed to copy link');
+                            console.error("Copy failed:", err);
+                            // Fallback for older browsers
+                            try {
+                                document.execCommand('copy');
+                                showToast('success', 'Referral link copied (fallback)!');
+                            } catch (ex) {
+                                showToast('error', 'Could not copy link');
+                            }
                         });
                 });
+            } else {
+                console.error("CRITICAL: Copy button or Input not found in DOM");
             }
         }
 
