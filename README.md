@@ -8,10 +8,14 @@ AI-powered image generation application using Google's Generative AI API with Fi
 - 🖼️ Image Editing Mode
 - 🔐 Firebase Authentication (Email & Google)
 - 💳 Paystack Payment Integration
+- 💰 **Referral System** - Earn ₦1,000 per successful referral
+- 📊 **Referral Dashboard** - Track clicks, signups, and earnings with beautiful analytics
+- 📈 **Real-time Stats** - Live graphs showing referral performance
 - ⚡ Smart Queue System (handles multiple users gracefully)
 - 🎯 Toast Notifications for errors and success messages
 - 🔒 Secure API key management with environment variables
 - ⏱️ Rate limiting with intelligent queueing (3 requests per minute per user)
+- 📱 Mobile Responsive Design
 
 ## Setup Instructions
 
@@ -127,6 +131,67 @@ Generates or edits images using AI
   "imageData": "base64-encoded-image"
 }
 ```
+
+### Referral API Endpoints
+
+#### POST `/api/referral/track-click`
+Track when a referral link is clicked
+
+**Request Body:**
+```json
+{
+  "referralCode": "ABC12345"
+}
+```
+
+#### POST `/api/referral/track-signup`
+Track when a user signs up via referral link
+
+**Request Body:**
+```json
+{
+  "referralCode": "ABC12345",
+  "newUserId": "user-id"
+}
+```
+
+#### POST `/api/referral/track-purchase`
+Track successful referral (when user purchases)
+
+**Request Body:**
+```json
+{
+  "referralCode": "ABC12345",
+  "purchasedUserId": "user-id"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Purchase tracked",
+  "reward": 1000
+}
+```
+
+## Referral System
+
+The app includes a comprehensive referral system where users can:
+
+1. **Generate Referral Links** - Each user gets a unique referral link
+2. **Track Performance** - Dashboard shows:
+   - Links Clicked (Red graph line)
+   - Signups (Blue graph line)
+   - Successful Referrals (Green graph line)
+3. **Earn Rewards** - ₦1,000 per successful referral
+4. **Monitor Status** - Three statuses:
+   - **Clicked**: User clicked the link
+   - **Signup**: User signed up
+   - **Successful**: User purchased Nano (payment complete)
+
+### Access Referral Dashboard
+Navigate to `/referral.html` to access your referral dashboard.
 
 ## Security Notes
 

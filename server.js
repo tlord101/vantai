@@ -233,102 +233,66 @@ app.post('/api/generate', async (req, res) => {
   }
 });
 
-// Generate video endpoint
-app.post('/api/generate-video', async (req, res) => {
+// Referral tracking endpoint - track link click
+app.post('/api/referral/track-click', async (req, res) => {
   try {
-    const { prompt, userId, customKey, imageBase64, imageMime } = req.body;
-
-    if (!prompt) {
-      return res.status(400).json({
-        success: false,
-        error: 'Prompt is required'
-      });
+    const { referralCode } = req.body;
+    if (!referralCode) {
+      return res.status(400).json({ success: false, error: 'Referral code required' });
     }
-
-    if (!userId) {
-      return res.status(400).json({
-        success: false,
-        error: 'User ID is required'
-      });
-    }
-
-    console.log('Video generation request:', { 
-      prompt: prompt.substring(0, 50), 
-      userId, 
-      hasImage: !!imageBase64 
-    });
-
-    const activeKey = customKey || process.env.GOOGLE_GEN_API_KEY;
-    
-    if (!activeKey) {
-      throw new Error('API key not configured');
-    }
-
-    const ai = new GoogleGenerativeAI(activeKey);
-    const model = ai.getGenerativeModel({ model: 'veo-3.0-fast-generate-preview' });
-
-    let contents;
-    
-    if (imageBase64) {
-      // With reference image
-      contents = [{
-        parts: [
-          { text: prompt },
-          { inlineData: { mimeType: imageMime || 'image/png', data: imageBase64 } }
-        ]
-      }];
-    } else {
-      // Text-to-video only
-      contents = [{ parts: [{ text: prompt }] }];
-    }
-
-    console.log('Calling Veo API...');
-
-    const response = await model.generateContent({
-      contents,
-      generationConfig: {
-        responseModalities: ['VIDEO']
-      }
-    });
-
-    console.log('Veo API response received');
-    console.log('Response structure:', JSON.stringify(response.response, null, 2).substring(0, 500));
-
-    const candidate = response.response.candidates[0];
-    let videoBase64;
-
-    // Extract video data from response
-    for (const part of candidate.content.parts) {
-      if (part.inlineData && part.inlineData.mimeType?.startsWith('video/')) {
-        videoBase64 = part.inlineData.data;
-        break;
-      }
-    }
-
-    if (!videoBase64) {
-      console.error('Full Veo response:', JSON.stringify(response.response, null, 2));
-      throw new Error("No video data returned from Veo.");
-    }
-
-    console.log('Video generated successfully, size:', videoBase64.length);
 
     res.json({
       success: true,
-      videoData: videoBase64
+      message: 'Click tracked'
     });
-
   } catch (error) {
-    console.error('Video generation error:', error);
-    console.error('Error details:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
-    });
-    
+    console.error('Track click error:', error);
     res.status(500).json({
       success: false,
-      error: error.message || 'Failed to generate video',
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      error: error.message || 'Failed to track click'
+    });
+  }
+});
+
+// Referral tracking endpoint - track signup
+app.post('/api/referral/track-signup', async (req, res) => {
+  try {
+    const { referralCode, newUserId } = req.body;
+    if (!referralCode || !newUserId) {
+      return res.status(400).json({ success: false, error: 'Referral code and user ID required' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Signup tracked'
+    });
+  } catch (error) {
+    console.error('Track signup error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to track signup'
+    });
+  }
+});
+
+// Referral tracking endpoint - track successful referral (purchase)
+app.post('/api/referral/track-purchase', async (req, res) => {
+  try {
+    const { referralCode, purchasedUserId } = req.body;
+    if (!referralCode || !purchasedUserId) {
+      return res.status(400).json({ success: false, error: 'Referral code and user ID required' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Purchase tracked',
+      reward: 1000 // 1000 Naira per successful referral
+    });
+  } catch (error) {
+    console.error('Track purchase error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to track purchase'
     });
   }
 });

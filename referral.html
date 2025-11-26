@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vant AI - Referral Dashboard</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Chart.js for graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slide-up {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .animate-fade-in {
+            animation: fade-in 0.3s ease-out forwards;
+        }
+
+        .animate-slide-up {
+            animation: slide-up 0.4s ease-out forwards;
+        }
+
+        .loader {
+            border: 3px solid rgba(250, 204, 21, 0.1);
+            border-left-color: #FACC15;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 999999999;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            pointer-events: none;
+        }
+
+        .toast {
+            min-width: 300px;
+            max-width: 500px;
+            padding: 16px 20px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            pointer-events: all;
+            animation: slideInRight 0.3s ease-out;
+        }
+
+        .toast.removing {
+            animation: slideOutRight 0.3s ease-out forwards;
+        }
+
+        .toast-success {
+            background: rgba(34, 197, 94, 0.15);
+            border: 1px solid rgba(34, 197, 94, 0.5);
+            color: #86efac;
+        }
+
+        .toast-error {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            color: #fca5a5;
+        }
+
+        .toast-info {
+            background: rgba(59, 130, 246, 0.15);
+            border: 1px solid rgba(59, 130, 246, 0.5);
+            color: #93c5fd;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOutRight {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+
+            to {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+        }
+
+        .gradient-border {
+            position: relative;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        }
+
+        .gradient-border::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 2px;
+            background: linear-gradient(135deg, #facc15, #f59e0b);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+        }
+    </style>
+</head>
+
+<body class="bg-neutral-900 text-yellow-50 font-sans selection:bg-yellow-500 selection:text-neutral-900">
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- APP CONTAINER -->
+    <div id="app" class="min-h-screen flex flex-col">
+
+        <!-- ==================== AUTH VIEW ==================== -->
+        <div id="auth-view" class="min-h-screen flex flex-col items-center justify-center p-4 relative w-full">
+            <!-- Background Decorations -->
+            <div class="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
+                <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-yellow-500/10 rounded-full blur-3xl animate-pulse">
+                </div>
+                <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-yellow-400/5 rounded-full blur-3xl"></div>
+            </div>
+
+            <div
+                class="z-10 bg-neutral-800/50 p-8 rounded-3xl border border-yellow-500/20 shadow-2xl max-w-md w-full backdrop-blur-md animate-slide-up">
+                <div class="flex justify-center mb-6">
+                    <div class="bg-yellow-400 p-4 rounded-2xl shadow-lg rotate-3 hover:rotate-6 transition-transform">
+                        <i data-lucide="users" class="w-10 h-10 text-neutral-900 fill-neutral-900"></i>
+                    </div>
+                </div>
+
+                <h1 class="text-3xl font-bold text-center text-white mb-2">Referral Dashboard</h1>
+                <p class="text-center text-neutral-400 mb-6">Sign in to view your referral stats</p>
+
+                <!-- Email Form -->
+                <form id="auth-form" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-neutral-500 uppercase mb-1">Email</label>
+                        <input type="email" id="email-input" required
+                            class="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white focus:border-yellow-400 outline-none transition-colors"
+                            placeholder="your@email.com">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-neutral-500 uppercase mb-1">Password</label>
+                        <input type="password" id="password-input" required
+                            class="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white focus:border-yellow-400 outline-none transition-colors"
+                            placeholder="••••••••">
+                    </div>
+
+                    <button type="submit" id="submit-auth-btn"
+                        class="w-full bg-white text-neutral-900 font-bold h-12 rounded-xl flex items-center justify-center gap-2 hover:bg-neutral-200 transition-colors shadow-lg">
+                        <span id="auth-btn-text">Sign In</span>
+                        <div id="auth-loader" class="loader hidden"
+                            style="border-left-color: #000; border-color: rgba(0,0,0,0.1);"></div>
+                    </button>
+                </form>
+
+                <p id="auth-error" class="text-red-400 text-center text-sm mt-4 hidden"></p>
+            </div>
+        </div>
+
+        <!-- ==================== REFERRAL DASHBOARD ==================== -->
+        <div id="referral-view" class="hidden min-h-screen flex flex-col">
+            <!-- Header -->
+            <header class="border-b border-yellow-500/10 bg-neutral-900/50 backdrop-blur-md sticky top-0 z-20">
+                <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="bg-yellow-400 p-1.5 rounded-lg">
+                            <i data-lucide="users" class="w-5 h-5 text-neutral-900 fill-neutral-900"></i>
+                        </div>
+                        <h1 class="text-lg md:text-xl font-bold tracking-tight text-yellow-400">
+                            Vant<span class="text-white">AI</span> <span class="text-neutral-500 text-sm">Referrals</span>
+                        </h1>
+                    </div>
+
+                    <button id="logout-btn"
+                        class="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-full transition-colors text-red-400">
+                        <i data-lucide="log-out" class="w-4 h-4"></i>
+                        <span class="text-sm font-bold">Logout</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Main Content -->
+            <main class="flex-1 w-full max-w-7xl mx-auto px-4 py-6 space-y-6">
+
+                <!-- Referral Link Card -->
+                <div class="gradient-border rounded-2xl p-6 backdrop-blur-sm animate-slide-up">
+                    <div class="flex items-start justify-between mb-4 flex-wrap gap-4">
+                        <div>
+                            <h2 class="text-2xl font-bold text-white mb-1 flex items-center gap-2">
+                                <i data-lucide="link" class="w-6 h-6 text-yellow-400"></i>
+                                Your Referral Link
+                            </h2>
+                            <p class="text-neutral-400 text-sm">Share this link to earn ₦1,000 per successful referral</p>
+                        </div>
+                        <div class="bg-green-500/20 px-4 py-2 rounded-full border border-green-500/30">
+                            <p class="text-green-400 font-bold text-sm">₦<span id="total-earnings">0</span> Earned</p>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2 flex-col sm:flex-row">
+                        <input type="text" id="referral-link" readonly
+                            class="flex-1 bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white focus:border-yellow-400 outline-none transition-colors font-mono text-sm"
+                            value="Loading...">
+                        <button id="copy-link-btn"
+                            class="bg-yellow-400 hover:bg-yellow-300 text-neutral-900 px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all whitespace-nowrap">
+                            <i data-lucide="copy" class="w-5 h-5"></i>
+                            Copy Link
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Links Clicked -->
+                    <div
+                        class="bg-neutral-800/40 border border-red-500/20 rounded-2xl p-6 backdrop-blur-sm animate-slide-up">
+                        <div class="flex items-center justify-between mb-2">
+                            <p class="text-neutral-400 text-sm font-medium">Links Clicked</p>
+                            <div class="bg-red-500/20 p-2 rounded-lg">
+                                <i data-lucide="mouse-pointer-click" class="w-5 h-5 text-red-400"></i>
+                            </div>
+                        </div>
+                        <p id="stat-clicks" class="text-3xl font-bold text-white">0</p>
+                        <p class="text-xs text-neutral-500 mt-1">Total clicks on your link</p>
+                    </div>
+
+                    <!-- Signups -->
+                    <div
+                        class="bg-neutral-800/40 border border-blue-500/20 rounded-2xl p-6 backdrop-blur-sm animate-slide-up"
+                        style="animation-delay: 0.1s">
+                        <div class="flex items-center justify-between mb-2">
+                            <p class="text-neutral-400 text-sm font-medium">Signups</p>
+                            <div class="bg-blue-500/20 p-2 rounded-lg">
+                                <i data-lucide="user-plus" class="w-5 h-5 text-blue-400"></i>
+                            </div>
+                        </div>
+                        <p id="stat-signups" class="text-3xl font-bold text-white">0</p>
+                        <p class="text-xs text-neutral-500 mt-1">Users signed up via your link</p>
+                    </div>
+
+                    <!-- Successful Referrals -->
+                    <div
+                        class="bg-neutral-800/40 border border-green-500/20 rounded-2xl p-6 backdrop-blur-sm animate-slide-up"
+                        style="animation-delay: 0.2s">
+                        <div class="flex items-center justify-between mb-2">
+                            <p class="text-neutral-400 text-sm font-medium">Successful Referrals</p>
+                            <div class="bg-green-500/20 p-2 rounded-lg">
+                                <i data-lucide="check-circle" class="w-5 h-5 text-green-400"></i>
+                            </div>
+                        </div>
+                        <p id="stat-successful" class="text-3xl font-bold text-white">0</p>
+                        <p class="text-xs text-neutral-500 mt-1">Users who purchased Nano</p>
+                    </div>
+                </div>
+
+                <!-- Referral Progress Chart -->
+                <div class="bg-neutral-800/40 border border-yellow-500/20 rounded-2xl p-6 backdrop-blur-sm">
+                    <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <i data-lucide="trending-up" class="w-5 h-5 text-yellow-400"></i>
+                        Referral Analytics
+                    </h3>
+                    <div class="relative" style="height: 300px;">
+                        <canvas id="referralChart"></canvas>
+                    </div>
+                    <div class="mt-4 flex justify-center gap-6 flex-wrap">
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                            <span class="text-sm text-neutral-400">Links Clicked</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
+                            <span class="text-sm text-neutral-400">Signups</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                            <span class="text-sm text-neutral-400">Successful Referrals</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Referrals Table -->
+                <div class="bg-neutral-800/40 border border-yellow-500/20 rounded-2xl p-6 backdrop-blur-sm">
+                    <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <i data-lucide="list" class="w-5 h-5 text-yellow-400"></i>
+                        Recent Referrals
+                    </h3>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="border-b border-neutral-700">
+                                    <th class="text-left py-3 px-4 text-xs font-bold text-neutral-400 uppercase">User
+                                    </th>
+                                    <th class="text-left py-3 px-4 text-xs font-bold text-neutral-400 uppercase">Date
+                                    </th>
+                                    <th class="text-left py-3 px-4 text-xs font-bold text-neutral-400 uppercase">Status
+                                    </th>
+                                    <th class="text-right py-3 px-4 text-xs font-bold text-neutral-400 uppercase">
+                                        Reward</th>
+                                </tr>
+                            </thead>
+                            <tbody id="referrals-table-body">
+                                <tr>
+                                    <td colspan="4" class="text-center py-8 text-neutral-500">
+                                        <div class="flex flex-col items-center gap-2">
+                                            <i data-lucide="inbox" class="w-12 h-12 text-neutral-600"></i>
+                                            <p>No referrals yet</p>
+                                            <p class="text-sm text-neutral-600">Start sharing your link to earn rewards!</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+        import { getFirestore, collection, getDocs, doc, getDoc, setDoc, updateDoc, increment, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+        // --- Toast Notification System ---
+        function showToast(type, message, duration = 5000) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const toastId = 'toast-' + Date.now();
+            toast.id = toastId;
+
+            const icons = {
+                success: 'check-circle-2',
+                error: 'alert-circle',
+                info: 'info'
+            };
+
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `
+                <i data-lucide="${icons[type] || 'info'}" class="w-5 h-5 flex-shrink-0"></i>
+                <p class="text-sm font-medium flex-1">${message}</p>
+                <button onclick="this.parentElement.remove()" class="hover:opacity-70 transition-opacity">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            `;
+
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.classList.add('removing');
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        }
+
+        // --- Configuration ---
+        const APP_ID = "nano-banana-v1";
+        const REWARD_PER_REFERRAL = 1000; // ₦1000 per successful referral
+
+        let firebaseConfig = null;
+        const API_BASE_URL = window.location.origin;
+
+        async function loadConfig() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/config`);
+                const config = await response.json();
+                firebaseConfig = config.firebase;
+                return config;
+            } catch (error) {
+                showToast('error', 'Failed to load configuration');
+                throw error;
+            }
+        }
+
+        let app, auth, db;
+
+        async function initFirebase() {
+            await loadConfig();
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+        }
+
+        let currentUser = null;
+        let referralChart = null;
+        let referralsUnsubscribe = null;
+
+        // UI Elements
+        const views = {
+            auth: document.getElementById('auth-view'),
+            referral: document.getElementById('referral-view')
+        };
+
+        const els = {
+            authForm: document.getElementById('auth-form'),
+            emailInput: document.getElementById('email-input'),
+            passInput: document.getElementById('password-input'),
+            submitAuthBtn: document.getElementById('submit-auth-btn'),
+            authBtnText: document.getElementById('auth-btn-text'),
+            authLoader: document.getElementById('auth-loader'),
+            authError: document.getElementById('auth-error'),
+            logoutBtn: document.getElementById('logout-btn'),
+            referralLink: document.getElementById('referral-link'),
+            copyLinkBtn: document.getElementById('copy-link-btn'),
+            totalEarnings: document.getElementById('total-earnings'),
+            statClicks: document.getElementById('stat-clicks'),
+            statSignups: document.getElementById('stat-signups'),
+            statSuccessful: document.getElementById('stat-successful'),
+            referralsTableBody: document.getElementById('referrals-table-body')
+        };
+
+        // --- Auth Logic ---
+        els.authForm.onsubmit = async (e) => {
+            e.preventDefault();
+            const email = els.emailInput.value;
+            const password = els.passInput.value;
+
+            setAuthLoading(true);
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+            } catch (error) {
+                showAuthError('Invalid credentials. Please try again.');
+                setAuthLoading(false);
+            }
+        };
+
+        function setAuthLoading(loading) {
+            els.submitAuthBtn.disabled = loading;
+            if (loading) {
+                els.authBtnText.classList.add('hidden');
+                els.authLoader.classList.remove('hidden');
+            } else {
+                els.authBtnText.classList.remove('hidden');
+                els.authLoader.classList.add('hidden');
+            }
+        }
+
+        function showAuthError(msg) {
+            els.authError.innerText = msg;
+            els.authError.classList.remove('hidden');
+        }
+
+        els.logoutBtn.onclick = () => signOut(auth);
+
+        // --- App State Listener ---
+        function setupAuthListener() {
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    currentUser = user;
+                    views.auth.classList.add('hidden');
+                    views.referral.classList.remove('hidden');
+                    await loadReferralData();
+                } else {
+                    currentUser = null;
+                    if (referralsUnsubscribe) {
+                        referralsUnsubscribe();
+                        referralsUnsubscribe = null;
+                    }
+                    views.auth.classList.remove('hidden');
+                    views.referral.classList.add('hidden');
+                    setAuthLoading(false);
+                }
+            });
+        }
+
+        // --- Generate Referral Code ---
+        function generateReferralCode(userId) {
+            // Create a unique code based on user ID
+            return btoa(userId).replace(/=/g, '').substring(0, 8).toUpperCase();
+        }
+
+        // --- Load Referral Data ---
+        async function loadReferralData() {
+            try {
+                const userId = currentUser.uid;
+                const referralCode = generateReferralCode(userId);
+                
+                // Set referral link
+                const referralUrl = `${window.location.origin}/?ref=${referralCode}`;
+                els.referralLink.value = referralUrl;
+
+                // Initialize or get referral document
+                const referralDocRef = doc(db, 'artifacts', APP_ID, 'referrals', userId);
+                const referralDoc = await getDoc(referralDocRef);
+
+                if (!referralDoc.exists()) {
+                    // Create new referral document
+                    await setDoc(referralDocRef, {
+                        userId: userId,
+                        code: referralCode,
+                        clicks: 0,
+                        signups: 0,
+                        successful: 0,
+                        earnings: 0,
+                        createdAt: new Date(),
+                        clickHistory: [],
+                        signupHistory: [],
+                        successHistory: []
+                    });
+                }
+
+                // Listen to referral stats in real-time
+                referralsUnsubscribe = onSnapshot(referralDocRef, (doc) => {
+                    if (doc.exists()) {
+                        const data = doc.data();
+                        updateDashboard(data);
+                    }
+                });
+
+                // Load referral details
+                loadReferralsList(userId);
+
+            } catch (error) {
+                console.error('Error loading referral data:', error);
+                showToast('error', 'Failed to load referral data');
+            }
+        }
+
+        // --- Update Dashboard ---
+        function updateDashboard(data) {
+            const clicks = data.clicks || 0;
+            const signups = data.signups || 0;
+            const successful = data.successful || 0;
+            const earnings = successful * REWARD_PER_REFERRAL;
+
+            els.statClicks.textContent = clicks;
+            els.statSignups.textContent = signups;
+            els.statSuccessful.textContent = successful;
+            els.totalEarnings.textContent = earnings.toLocaleString();
+
+            updateChart(data);
+        }
+
+        // --- Update Chart ---
+        function updateChart(data) {
+            const clickHistory = data.clickHistory || [];
+            const signupHistory = data.signupHistory || [];
+            const successHistory = data.successHistory || [];
+
+            // Get last 7 days
+            const days = [];
+            const clicksData = [];
+            const signupsData = [];
+            const successData = [];
+
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                const dateStr = date.toISOString().split('T')[0];
+                days.push(date.toLocaleDateString('en', { weekday: 'short' }));
+
+                clicksData.push(clickHistory.filter(h => h.startsWith(dateStr)).length);
+                signupsData.push(signupHistory.filter(h => h.startsWith(dateStr)).length);
+                successData.push(successHistory.filter(h => h.startsWith(dateStr)).length);
+            }
+
+            const ctx = document.getElementById('referralChart').getContext('2d');
+            
+            if (referralChart) {
+                referralChart.destroy();
+            }
+
+            referralChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: days,
+                    datasets: [
+                        {
+                            label: 'Clicks',
+                            data: clicksData,
+                            borderColor: '#ef4444',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Signups',
+                            data: signupsData,
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Successful',
+                            data: successData,
+                            borderColor: '#22c55e',
+                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { 
+                                color: '#a3a3a3',
+                                stepSize: 1
+                            },
+                            grid: { color: '#262626' }
+                        },
+                        x: {
+                            ticks: { color: '#a3a3a3' },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- Load Referrals List ---
+        async function loadReferralsList(userId) {
+            try {
+                const referredUsersRef = collection(db, 'artifacts', APP_ID, 'referrals', userId, 'referred');
+                const q = query(referredUsersRef, orderBy('date', 'desc'));
+                
+                onSnapshot(q, (snapshot) => {
+                    if (snapshot.empty) {
+                        els.referralsTableBody.innerHTML = `
+                            <tr>
+                                <td colspan="4" class="text-center py-8 text-neutral-500">
+                                    <div class="flex flex-col items-center gap-2">
+                                        <i data-lucide="inbox" class="w-12 h-12 text-neutral-600"></i>
+                                        <p>No referrals yet</p>
+                                        <p class="text-sm text-neutral-600">Start sharing your link to earn rewards!</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                        lucide.createIcons();
+                        return;
+                    }
+
+                    const referrals = [];
+                    snapshot.forEach(doc => {
+                        referrals.push({ id: doc.id, ...doc.data() });
+                    });
+
+                    renderReferralsTable(referrals);
+                });
+
+            } catch (error) {
+                console.error('Error loading referrals list:', error);
+            }
+        }
+
+        // --- Render Referrals Table ---
+        function renderReferralsTable(referrals) {
+            els.referralsTableBody.innerHTML = referrals.map(ref => {
+                const status = ref.status || 'clicked';
+                const statusColors = {
+                    clicked: { bg: 'bg-red-500/20', text: 'text-red-400', border: 'border-red-500/30', icon: 'mouse-pointer-click' },
+                    signup: { bg: 'bg-blue-500/20', text: 'text-blue-400', border: 'border-blue-500/30', icon: 'user-plus' },
+                    successful: { bg: 'bg-green-500/20', text: 'text-green-400', border: 'border-green-500/30', icon: 'check-circle' }
+                };
+                const style = statusColors[status];
+                const reward = status === 'successful' ? '₦1,000' : 'Pending';
+                const date = ref.date ? new Date(ref.date.seconds * 1000).toLocaleDateString() : 'N/A';
+
+                return `
+                    <tr class="border-b border-neutral-800 hover:bg-neutral-800/30 transition-colors">
+                        <td class="py-4 px-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-yellow-400/20 rounded-full flex items-center justify-center">
+                                    <span class="text-yellow-400 font-bold">${(ref.email || ref.userId || 'U').charAt(0).toUpperCase()}</span>
+                                </div>
+                                <div>
+                                    <p class="text-white font-medium text-sm">${ref.email || ref.userId || 'Anonymous'}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-4 px-4 text-neutral-400 text-sm">${date}</td>
+                        <td class="py-4 px-4">
+                            <span class="inline-flex items-center gap-1 px-3 py-1 ${style.bg} ${style.text} border ${style.border} rounded-full text-xs font-bold">
+                                <i data-lucide="${style.icon}" class="w-3 h-3"></i>
+                                ${status.charAt(0).toUpperCase() + status.slice(1)}
+                            </span>
+                        </td>
+                        <td class="py-4 px-4 text-right">
+                            <span class="font-bold ${status === 'successful' ? 'text-green-400' : 'text-neutral-500'}">${reward}</span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            lucide.createIcons();
+        }
+
+        // --- Copy Link ---
+        els.copyLinkBtn.onclick = async () => {
+            try {
+                await navigator.clipboard.writeText(els.referralLink.value);
+                showToast('success', 'Referral link copied to clipboard!');
+                
+                // Track click (optional - you could track when user copies)
+                const userId = currentUser.uid;
+                const referralDocRef = doc(db, 'artifacts', APP_ID, 'referrals', userId);
+                const now = new Date().toISOString();
+                
+                await updateDoc(referralDocRef, {
+                    lastCopied: now
+                });
+            } catch (error) {
+                showToast('error', 'Failed to copy link');
+            }
+        };
+
+        // Init Firebase and Icons
+        initFirebase().then(() => {
+            setupAuthListener();
+            lucide.createIcons();
+        }).catch(err => {
+            showToast('error', 'Failed to initialize app: ' + err.message);
+        });
+
+    </script>
+</body>
+
+</html>
