@@ -780,13 +780,8 @@
         els.copyLinkBtn.onclick = async () => {
             try {
                 const linkToCopy = els.referralLink.value;
-                console.log('Copy button clicked!');
-                console.log('Link to copy:', linkToCopy);
-                console.log('Element value:', els.referralLink.value);
-                console.log('Clipboard API available:', !!navigator.clipboard);
                 
                 if (!linkToCopy || linkToCopy === 'Loading...') {
-                    console.error('Link not ready:', linkToCopy);
                     showToast('error', 'Referral link not ready yet');
                     return;
                 }
@@ -795,11 +790,23 @@
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     try {
                         await navigator.clipboard.writeText(linkToCopy);
-                        console.log('Successfully copied with clipboard API:', linkToCopy);
                         showToast('success', 'Referral link copied to clipboard!');
+                        
+                        // Visual feedback on button
+                        const originalHTML = els.copyLinkBtn.innerHTML;
+                        els.copyLinkBtn.innerHTML = `
+                            <i data-lucide="check" class="w-5 h-5"></i>
+                            Copied!
+                        `;
+                        lucide.createIcons();
+                        
+                        setTimeout(() => {
+                            els.copyLinkBtn.innerHTML = originalHTML;
+                            lucide.createIcons();
+                        }, 2000);
+                        
                     } catch (clipboardError) {
                         console.error('Clipboard API failed, trying fallback:', clipboardError);
-                        // Try fallback
                         copyWithFallback(linkToCopy);
                     }
                 } else {
@@ -807,7 +814,7 @@
                     copyWithFallback(linkToCopy);
                 }
                 
-                // Track click (optional - you could track when user copies)
+                // Track when user copies the link
                 if (currentUser) {
                     try {
                         const userId = currentUser.uid;
@@ -819,13 +826,11 @@
                         });
                     } catch (trackError) {
                         console.error('Error tracking copy:', trackError);
-                        // Don't show error to user, tracking is optional
                     }
                 }
             } catch (error) {
                 console.error('Copy error:', error);
-                console.error('Error stack:', error.stack);
-                showToast('error', 'Failed to copy link: ' + error.message);
+                showToast('error', 'Failed to copy link');
             }
         };
 
@@ -856,14 +861,28 @@
                 document.body.removeChild(textarea);
                 
                 if (successful) {
-                    console.log('Successfully copied with fallback method:', text);
                     showToast('success', 'Referral link copied to clipboard!');
+                    
+                    // Visual feedback on button
+                    const originalHTML = els.copyLinkBtn.innerHTML;
+                    els.copyLinkBtn.innerHTML = `
+                        <i data-lucide="check" class="w-5 h-5"></i>
+                        Copied!
+                    `;
+                    lucide.createIcons();
+                    
+                    setTimeout(() => {
+                        els.copyLinkBtn.innerHTML = originalHTML;
+                        lucide.createIcons();
+                    }, 2000);
                 } else {
-                    throw new Error('execCommand failed');
+                    throw new Error('Copy command failed');
                 }
             } catch (fallbackError) {
                 console.error('Fallback copy failed:', fallbackError);
-                showToast('error', 'Copy failed. Please manually select and copy the link.');
+                showToast('error', 'Unable to copy. Please select and copy the link manually.');
+                // Select the input field so user can manually copy
+                els.referralLink.select();
             }
         }
 
