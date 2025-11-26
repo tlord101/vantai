@@ -458,11 +458,17 @@
             const copyLinkBtn = document.getElementById('copy-link-btn');
             const referralInput = document.getElementById('referral-link');
 
+            console.log("Logout button:", logoutBtn);
+            console.log("Copy button:", copyLinkBtn);
+            console.log("Referral input:", referralInput);
+            console.log("Referral view hidden?", views.referral.classList.contains('hidden'));
+
             // Setup Logout
             if (logoutBtn) {
                 logoutBtn.onclick = () => {
                     signOut(auth).then(() => window.location.href = '/');
                 };
+                console.log("Logout button listener attached");
             }
 
             // Setup Copy Button
@@ -507,8 +513,11 @@
                             }
                         });
                 });
+                console.log("Copy button listener attached");
             } else {
                 console.error("CRITICAL: Copy button or Input not found in DOM");
+                console.error("Copy button element:", copyLinkBtn);
+                console.error("Input element:", referralInput);
             }
         }
 
