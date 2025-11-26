@@ -512,6 +512,7 @@
             }
         }
 
+        
         // --- App State Listener ---
         function setupAuthListener() {
             onAuthStateChanged(auth, async (user) => {
@@ -521,7 +522,12 @@
                     views.auth.classList.add('hidden');
                     views.referral.classList.remove('hidden');
                     console.log('User authenticated, loading referral data...');
-                    setupEventListeners(); // Setup event listeners after view is visible
+                    
+                    // Wait for DOM to be fully rendered before setting up event listeners
+                    setTimeout(() => {
+                        setupEventListeners();
+                    }, 100);
+                    
                     await loadReferralData();
                 } else {
                     console.log('No user authenticated, redirecting to main app...');
