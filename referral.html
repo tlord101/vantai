@@ -246,10 +246,10 @@
                             placeholder="Your referral link will appear here..."
                             onclick="this.select()">
                         <button id="copy-link-btn"
-                            class="bg-yellow-400 hover:bg-yellow-300 text-neutral-900 px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all whitespace-nowrap">
-                            <i data-lucide="copy" class="w-5 h-5"></i>
-                            Copy Link
-                        </button>
+    class="relative z-20 cursor-pointer bg-yellow-400 hover:bg-yellow-300 text-neutral-900 px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform">
+    <i data-lucide="copy" class="w-5 h-5"></i>
+    Copy Link
+</button>
                     </div>
                 </div>
 
@@ -472,55 +472,24 @@
                 console.log("Logout button listener attached");
             }
 
-            // Setup Copy Button
-            if (copyLinkBtn && referralInput) {
-                console.log("Copy button found, attaching listener."); // Debug log
+            // 3. Simple Copy Logic
+    if (copyLinkBtn && referralInput) {
+        
+        copyLinkBtn.addEventListener("click", () => {
+            // A. Select the text
+            referralInput.select();
+            referralInput.setSelectionRange(0, 99999); // Mobile fix
 
-                // Store original content to prevent the "Stuck Button" bug
-                const originalContent = copyLinkBtn.innerHTML;
-                let isCopying = false;
+            // B. Copy to clipboard
+            navigator.clipboard.writeText(referralInput.value);
 
-                copyLinkBtn.addEventListener("click", function (e) {
-                    e.preventDefault(); // Stop any default form behavior
-                    
-                    if (isCopying) return;
+            // C. Show Toast (No complex button animations)
+            showToast('success', 'Referral link copied!');
+        });
+        
+        console.log("Simple copy listener attached.");
 
-                    // Select text
-                    referralInput.select();
-                    referralInput.setSelectionRange(0, 99999); // Mobile fix
-
-                    navigator.clipboard.writeText(referralInput.value)
-                        .then(() => {
-                            showToast('success', 'Referral link copied!');
-                            
-                            isCopying = true;
-                            this.innerHTML = `<i data-lucide="check" class="w-5 h-5"></i> Copied!`;
-                            lucide.createIcons();
-
-                            setTimeout(() => {
-                                this.innerHTML = originalContent;
-                                lucide.createIcons();
-                                isCopying = false;
-                            }, 2000);
-                        })
-                        .catch(err => {
-                            console.error("Copy failed:", err);
-                            // Fallback for older browsers
-                            try {
-                                document.execCommand('copy');
-                                showToast('success', 'Referral link copied (fallback)!');
-                            } catch (ex) {
-                                showToast('error', 'Could not copy link');
-                            }
-                        });
-                });
-                console.log("Copy button listener attached");
-            } else {
-                console.error("CRITICAL: Copy button or Input not found in DOM");
-                console.error("Copy button element:", copyLinkBtn);
-                console.error("Input element:", referralInput);
-            }
-        }
+    } // <-- Fix: Close setupEventListeners function
 
         
         // --- App State Listener ---
@@ -873,7 +842,7 @@
             console.error('Firebase initialization error:', err);
             showToast('error', 'Failed to initialize app: ' + err.message);
         });
-
+}
     </script>
 </body>
 
