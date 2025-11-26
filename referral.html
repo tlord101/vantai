@@ -609,7 +609,13 @@
                 successData.push(successHistory.filter(h => h.startsWith(dateStr)).length);
             }
 
-            const ctx = document.getElementById('referralChart').getContext('2d');
+            const chartElement = document.getElementById('referralChart');
+            if (!chartElement) {
+                console.error('Chart element not found');
+                return;
+            }
+            
+            const ctx = chartElement.getContext('2d');
             
             if (referralChart) {
                 referralChart.destroy();
