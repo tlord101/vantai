@@ -480,8 +480,12 @@
         // --- Load Referral Data ---
         async function loadReferralData() {
             try {
+                console.log('Loading referral data...');
                 const userId = currentUser.uid;
+                console.log('User ID:', userId);
+                
                 const referralCode = generateReferralCode(userId);
+                console.log('Referral code:', referralCode);
                 
                 // Set referral link
                 const referralUrl = `${window.location.origin}/?ref=${referralCode}`;
@@ -489,9 +493,12 @@
 
                 // Initialize or get referral document
                 const referralDocRef = doc(db, 'artifacts', APP_ID, 'referrals', userId);
+                console.log('Getting referral document...');
                 const referralDoc = await getDoc(referralDocRef);
+                console.log('Referral doc exists:', referralDoc.exists());
 
                 if (!referralDoc.exists()) {
+                    console.log('Creating new referral document...');
                     // Create new referral document
                     await setDoc(referralDocRef, {
                         userId: userId,
@@ -505,22 +512,28 @@
                         signupHistory: [],
                         successHistory: []
                     });
+                    console.log('Referral document created');
                 }
 
                 // Listen to referral stats in real-time
+                console.log('Setting up real-time listener...');
                 referralsUnsubscribe = onSnapshot(referralDocRef, (doc) => {
                     if (doc.exists()) {
+                        console.log('Referral data updated:', doc.data());
                         const data = doc.data();
                         updateDashboard(data);
                     }
                 });
 
                 // Load referral details
+                console.log('Loading referrals list...');
                 loadReferralsList(userId);
+                console.log('Referral data loaded successfully');
 
             } catch (error) {
                 console.error('Error loading referral data:', error);
-                showToast('error', 'Failed to load referral data');
+                console.error('Error details:', error.message, error.code);
+                showToast('error', 'Failed to load referral data: ' + error.message);
             }
         }
 
