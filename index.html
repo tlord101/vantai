@@ -732,7 +732,7 @@
                     const userRef = doc(db, 'artifacts', APP_ID, 'users', user.uid, 'account', 'balance');
                     const snap = await getDoc(userRef);
                     if (!snap.exists()) {
-                        await setDoc(userRef, { credits: 0, email: user.email });
+                        await setDoc(userRef, { credits: 10, email: user.email });
                     }
                     onSnapshot(userRef, (doc) => {
                         credits = doc.data()?.credits || 0;

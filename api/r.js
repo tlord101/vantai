@@ -25,8 +25,10 @@ module.exports = async (req, res) => {
       console.error('Failed to POST track-click from /api/r:', err);
     }
 
-    // Redirect to root (307 Temporary Redirect)
-    res.writeHead(307, { Location: '/' });
+    // Redirect to root with referral code preserved so client-side tracker can pick it up
+    // e.g. redirect to '/?ref=CODE'
+    const redirectTo = `/?ref=${encodeURIComponent(referralCode)}`;
+    res.writeHead(307, { Location: redirectTo });
     res.end();
   } catch (err) {
     console.error('Error in /api/r handler:', err);
