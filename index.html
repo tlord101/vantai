@@ -793,33 +793,64 @@
         els.fileInput.onchange = (e) => {
             const files = Array.from(e.target.files || []);
             if (files.length === 0) return;
-            // reset
-            uploadedImages = [];
-            els.uploadedPreview.innerHTML = '';
 
-            const maxFiles = Math.min(files.length, 6);
-            let loaded = 0;
-            files.slice(0, maxFiles).forEach((file) => {
+            const MAX_TOTAL = 6;
+            const spaceLeft = Math.max(0, MAX_TOTAL - uploadedImages.length);
+            const toAdd = files.slice(0, spaceLeft);
+
+            let loadedCount = 0;
+            toAdd.forEach((file) => {
                 if (!file.type.startsWith('image/')) return;
                 const reader = new FileReader();
+                const uid = 'img-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
                 reader.onloadend = () => {
                     const dataUrl = reader.result;
                     const base64 = dataUrl.split(',')[1];
                     const mime = dataUrl.split(';')[0].split(':')[1];
-                    uploadedImages.push({ base64, mime, dataUrl });
+                    uploadedImages.push({ id: uid, base64, mime, dataUrl });
+
+                    // create thumbnail wrapper with remove button
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'relative';
+                    wrapper.dataset.id = uid;
 
                     const thumb = document.createElement('img');
                     thumb.src = dataUrl;
                     thumb.className = 'w-20 h-20 object-contain rounded-md border border-neutral-800 bg-neutral-900';
-                    els.uploadedPreview.appendChild(thumb);
 
-                    loaded++;
-                    if (loaded === 1) {
-                        // show at least the first image immediately
+                    const removeBtn = document.createElement('button');
+                    removeBtn.type = 'button';
+                    removeBtn.className = 'absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-600 text-white text-xs flex items-center justify-center';
+                    removeBtn.innerText = '✕';
+                    removeBtn.onclick = (ev) => {
+                        ev.stopPropagation();
+                        const id = wrapper.dataset.id;
+                        uploadedImages = uploadedImages.filter(i => i.id !== id);
+                        wrapper.remove();
+                        // if no images left, revert UI
+                        if (uploadedImages.length === 0) {
+                            els.uploadedPreview.classList.add('hidden');
+                            els.uploadedPreview.innerHTML = '';
+                            els.uploadPlaceholder.classList.remove('hidden');
+                            // keep clearUploadBtn hidden; individual removal preferred
+                            els.fileInput.value = '';
+                            els.modeTitle.innerText = "Generation Mode";
+                            els.modeDesc.innerText = "Create new images from text.";
+                            els.generateBtnText.innerText = `Generate (${COST_PER_GEN} Nano)`;
+                        } else {
+                            els.generateBtnText.innerText = `Edit (${COST_PER_GEN} Nano)`;
+                        }
+                    };
+
+                    wrapper.appendChild(thumb);
+                    wrapper.appendChild(removeBtn);
+                    els.uploadedPreview.appendChild(wrapper);
+
+                    loadedCount++;
+                    // show preview area when first image is added
+                    if (els.uploadedPreview.classList.contains('hidden')) {
                         els.uploadedPreview.classList.remove('hidden');
                         els.uploadPlaceholder.classList.add('hidden');
-                        els.clearUploadBtn.classList.remove('hidden');
-
                         // Update Mode UI
                         els.modeTitle.innerText = "Edit Mode";
                         els.modeDesc.innerText = "Describe how to change the image(s).";
@@ -829,6 +860,9 @@
                 };
                 reader.readAsDataURL(file);
             });
+
+            // reset input so user can select same file again if needed
+            els.fileInput.value = '';
         };
 
         els.clearUploadBtn.onclick = (e) => {
@@ -957,7 +991,7 @@
                 els.generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                 els.generateIcon.classList.remove('hidden');
                 els.generateLoader.classList.add('hidden');
-                els.generateBtnText.innerText = uploadedImageBase64 ? `Edit (${COST_PER_GEN} Nano)` : `Generate (${COST_PER_GEN} Nano)`;
+                els.generateBtnText.innerText = uploadedImages.length ? `Edit (${COST_PER_GEN} Nano)` : `Generate (${COST_PER_GEN} Nano)`;
             }
         };
 
