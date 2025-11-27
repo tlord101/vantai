@@ -669,7 +669,17 @@
             setAuthLoading(true);
             try {
                 if (authMode === 'signup') {
-                    await createUserWithEmailAndPassword(auth, email, password);
+                    const cred = await createUserWithEmailAndPassword(auth, email, password);
+                    // Notify server to monitor this signup (helps detect multi-signup abuse)
+                    try {
+                        await fetch(`${API_BASE_URL}/api/security/signup-monitor`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ uid: cred.user.uid, email })
+                        });
+                    } catch (e) {
+                        console.warn('signup-monitor failed', e);
+                    }
                 } else {
                     await signInWithEmailAndPassword(auth, email, password);
                 }
