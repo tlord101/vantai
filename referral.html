@@ -161,6 +161,9 @@
     <!-- Toast Container -->
     <div id="toast-container" class="toast-container"></div>
 
+    <!-- Add missing auth-view element -->
+    <div id="auth-view"></div>
+
     <!-- APP CONTAINER -->
     <div id="app" class="min-h-screen flex flex-col">
 
@@ -468,25 +471,23 @@
             }
 
             // 3. Simple Copy Logic
-    if (copyLinkBtn && referralInput) {
-        
-        copyLinkBtn.addEventListener("click", () => {
-            // A. Select the text
-            referralInput.select();
-            referralInput.setSelectionRange(0, 99999); // Mobile fix
+            if (copyLinkBtn && referralInput) {
+                copyLinkBtn.addEventListener("click", () => {
+                    // A. Select the text
+                    referralInput.select();
+                    referralInput.setSelectionRange(0, 99999); // Mobile fix
 
-            // B. Copy to clipboard
-            navigator.clipboard.writeText(referralInput.value);
+                    // B. Copy to clipboard
+                    navigator.clipboard.writeText(referralInput.value);
 
-            // C. Show Toast (No complex button animations)
-            showToast('success', 'Referral link copied!');
-        });
-        
-        console.log("Simple copy listener attached.");
+                    // C. Show Toast (No complex button animations)
+                    showToast('success', 'Referral link copied!');
+                });
 
-    } // <-- Fix: Close setupEventListeners function
+                console.log("Simple copy listener attached.");
+            }
+        } // <-- FIXED: Properly close setupEventListeners function
 
-        
         // --- App State Listener ---
         function setupAuthListener() {
             onAuthStateChanged(auth, async (user) => {
@@ -628,97 +629,100 @@
 
         // --- Update Chart ---
         function updateChart(data) {
-            const clickHistory = data.clickHistory || [];
-            const signupHistory = data.signupHistory || [];
-            const successHistory = data.successHistory || [];
+	const clickHistory = (data && data.clickHistory) || [];
+	const signupHistory = (data && data.signupHistory) || [];
+	const successHistory = (data && data.successHistory) || [];
 
-            // Get last 7 days
-            const days = [];
-            const clicksData = [];
-            const signupsData = [];
-            const successData = [];
+	// Last 7 days labels and aggregated counts
+	const days = [];
+	const clicksData = [];
+	const signupsData = [];
+	const successData = [];
 
-            for (let i = 6; i >= 0; i--) {
-                const date = new Date();
-                date.setDate(date.getDate() - i);
-                const dateStr = date.toISOString().split('T')[0];
-                days.push(date.toLocaleDateString('en', { weekday: 'short' }));
+	for (let i = 6; i >= 0; i--) {
+		const date = new Date();
+		date.setDate(date.getDate() - i);
+		const dateStr = date.toISOString().split('T')[0];
+		days.push(date.toLocaleDateString('en', { weekday: 'short' }));
 
-                clicksData.push(clickHistory.filter(h => h.startsWith(dateStr)).length);
-                signupsData.push(signupHistory.filter(h => h.startsWith(dateStr)).length);
-                successData.push(successHistory.filter(h => h.startsWith(dateStr)).length);
-            }
+		clicksData.push(clickHistory.filter(h => typeof h === 'string' && h.startsWith(dateStr)).length);
+		signupsData.push(signupHistory.filter(h => typeof h === 'string' && h.startsWith(dateStr)).length);
+		successData.push(successHistory.filter(h => typeof h === 'string' && h.startsWith(dateStr)).length);
+	}
 
-            const chartElement = document.getElementById('referralChart');
-            if (!chartElement) {
-                console.warn('Chart element not found - view may not be visible yet');
-                return;
-            }
-            
-            const ctx = chartElement.getContext('2d');
-            if (!ctx) {
-                console.warn('Could not get chart context');
-                return;
-            }
-            
-            if (referralChart) {
-                referralChart.destroy();
-            }
+	const chartElement = document.getElementById('referralChart');
+	if (!chartElement) {
+		console.warn('Chart element not found - view may not be visible yet');
+		return;
+	}
 
-            referralChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: days,
-                    datasets: [
-                        {
-                            label: 'Clicks',
-                            data: clicksData,
-                            borderColor: '#ef4444',
-                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                            tension: 0.4,
-                            fill: true
-                        },
-                        {
-                            label: 'Signups',
-                            data: signupsData,
-                            borderColor: '#3b82f6',
-                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                            tension: 0.4,
-                            fill: true
-                        },
-                        {
-                            label: 'Successful',
-                            data: successData,
-                            borderColor: '#22c55e',
-                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                            tension: 0.4,
-                            fill: true
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: { 
-                                color: '#a3a3a3',
-                                stepSize: 1
-                            },
-                            grid: { color: '#262626' }
-                        },
-                        x: {
-                            ticks: { color: '#a3a3a3' },
-                            grid: { display: false }
-                        }
-                    }
-                }
-            });
-        }
+	const ctx = chartElement.getContext('2d');
+	if (!ctx) {
+		console.warn('Could not get chart context');
+		return;
+	}
+
+	// Destroy previous chart instance if present
+	if (referralChart && typeof referralChart.destroy === 'function') {
+		referralChart.destroy();
+	}
+
+	const config = {
+		type: 'line',
+		data: {
+			labels: days,
+			datasets: [
+				{
+					label: 'Clicks',
+					data: clicksData,
+					borderColor: '#ef4444',
+					backgroundColor: 'rgba(239, 68, 68, 0.1)',
+					tension: 0.4,
+					fill: true
+				},
+				{
+					label: 'Signups',
+					data: signupsData,
+					borderColor: '#3b82f6',
+					backgroundColor: 'rgba(59, 130, 246, 0.1)',
+					tension: 0.4,
+					fill: true
+				},
+				{
+					label: 'Successful',
+				 data: successData,
+				 borderColor: '#22c55e',
+				 backgroundColor: 'rgba(34, 197, 94, 0.1)',
+				 tension: 0.4,
+				 fill: true
+				}
+			]
+		},
+		options: {
+			responsive: true,
+			maintainAspectRatio: false,
+			plugins: {
+				legend: { display: false }
+			},
+			scales: {
+				y: {
+					beginAtZero: true,
+					ticks: {
+						color: '#a3a3a3',
+						stepSize: 1
+					},
+					grid: { color: '#262626' }
+				},
+				x: {
+					ticks: { color: '#a3a3a3' },
+					grid: { display: false }
+				}
+			}
+		}
+	};
+
+	referralChart = new Chart(ctx, config);
+}
 
         // --- Load Referrals List ---
         async function loadReferralsList(userId) {
@@ -837,7 +841,6 @@
             console.error('Firebase initialization error:', err);
             showToast('error', 'Failed to initialize app: ' + err.message);
         });
-}
     </script>
 </body>
 
