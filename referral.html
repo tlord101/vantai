@@ -227,6 +227,12 @@
     <i data-lucide="copy" class="w-5 h-5"></i>
     Copy Link
 </button>
+
+    <!-- Simulate click for debugging -->
+    <button id="simulate-click-btn"
+        class="mt-2 sm:mt-0 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-semibold">
+        Simulate Click
+    </button>
                     </div>
 
                     <!-- Add this small "last updated" indicator inside the Referral Link Card (e.g. below the earnings) -->
@@ -491,6 +497,31 @@
 
                 console.log("Simple copy listener attached.");
             }
+
+            // Add this inside setupEventListeners() or after it's defined (minimal patch)
+            const simulateBtn = views.referral.querySelector('#simulate-click-btn');
+            if (simulateBtn) {
+                simulateBtn.addEventListener('click', async () => {
+                    if (!currentUser) {
+                        showToast('error', 'Not signed in');
+                        return;
+                    }
+                    try {
+                        const userId = currentUser.uid;
+                        const referralDocRef = doc(db, 'artifacts', APP_ID, 'referrals', userId);
+                        // Update doc directly to simulate a click event
+                        await updateDoc(referralDocRef, {
+                            clicks: increment(1),
+                            clickHistory: arrayUnion(new Date().toISOString()),
+                            updatedAt: Timestamp.now()
+                        });
+                        showToast('success', 'Simulated click recorded');
+                    } catch (err) {
+                        console.error('Simulate click error:', err);
+                        showToast('error', 'Failed to simulate click: ' + (err.message || err));
+                    }
+                });
+            }
         } // <-- FIXED: Properly close setupEventListeners function
 
         // --- App State Listener ---
@@ -539,8 +570,10 @@
                 console.log('Referral code:', referralCode);
                 
                 // Set referral link
-                const baseUrl = window.location.origin;
-                const referralUrl = `${baseUrl}/?ref=${referralCode}`;
+                // Use server redirect endpoint so clicks are recorded server-side.
+                // Make sure your server (Cloud Function / Cloud Run) exposes GET /r?ref=CODE
+                const redirectEndpoint = `${API_BASE_URL}/r`;
+                const referralUrl = `${redirectEndpoint}?ref=${referralCode}`;
                 console.log('Base URL:', baseUrl);
                 console.log('Full referral URL:', referralUrl);
                 console.log('Referral link element:', els.referralLink);
