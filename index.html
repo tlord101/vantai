@@ -344,9 +344,8 @@
                                         class="w-6 h-6 text-neutral-500 group-hover:text-yellow-400 transition-colors"></i>
                                     <p class="text-xs text-neutral-500 mt-1">Tap to upload for editing</p>
                                 </div>
-                                <img id="uploaded-preview"
-                                    class="hidden w-full h-full object-contain absolute inset-0 bg-neutral-900" />
-                                <input type="file" id="file-input" accept="image/png, image/jpeg" class="hidden" />
+                                <div id="uploaded-preview" class="hidden w-full h-full absolute inset-0 bg-neutral-900 p-2 overflow-auto flex gap-2 items-start"></div>
+                                <input type="file" id="file-input" accept="image/png, image/jpeg" class="hidden" multiple />
                             </div>
                         </div>
 
@@ -575,8 +574,7 @@
         let currentUser = null;
         let credits = 0;
         let currentAmount = 10; // Default buy amount
-        let uploadedImageBase64 = null;
-        let uploadedImageMime = null;
+        let uploadedImages = []; // array of { base64, mime, dataUrl }
         let authMode = 'signin'; // 'signin' or 'signup'
 
         // --- UI Elements ---
@@ -793,32 +791,51 @@
         // --- Image Upload Logic ---
         els.uploadArea.onclick = () => els.fileInput.click();
         els.fileInput.onchange = (e) => {
-            const file = e.target.files[0];
-            if (file && file.type.startsWith('image/')) {
+            const files = Array.from(e.target.files || []);
+            if (files.length === 0) return;
+            // reset
+            uploadedImages = [];
+            els.uploadedPreview.innerHTML = '';
+
+            const maxFiles = Math.min(files.length, 6);
+            let loaded = 0;
+            files.slice(0, maxFiles).forEach((file) => {
+                if (!file.type.startsWith('image/')) return;
                 const reader = new FileReader();
                 reader.onloadend = () => {
-                    uploadedImageBase64 = reader.result.split(',')[1];
-                    uploadedImageMime = reader.result.split(';')[0].split(':')[1];
+                    const dataUrl = reader.result;
+                    const base64 = dataUrl.split(',')[1];
+                    const mime = dataUrl.split(';')[0].split(':')[1];
+                    uploadedImages.push({ base64, mime, dataUrl });
 
-                    els.uploadedPreview.src = reader.result;
-                    els.uploadedPreview.classList.remove('hidden');
-                    els.uploadPlaceholder.classList.add('hidden');
-                    els.clearUploadBtn.classList.remove('hidden');
+                    const thumb = document.createElement('img');
+                    thumb.src = dataUrl;
+                    thumb.className = 'w-20 h-20 object-contain rounded-md border border-neutral-800 bg-neutral-900';
+                    els.uploadedPreview.appendChild(thumb);
 
-                    // Update Mode UI
-                    els.modeTitle.innerText = "Edit Mode";
-                    els.modeDesc.innerText = "Describe how to change the image.";
-                    els.generateBtnText.innerText = `Edit (${COST_PER_GEN} Nano)`;
-                    els.promptInput.placeholder = "Make the background a cyberpunk city...";
+                    loaded++;
+                    if (loaded === 1) {
+                        // show at least the first image immediately
+                        els.uploadedPreview.classList.remove('hidden');
+                        els.uploadPlaceholder.classList.add('hidden');
+                        els.clearUploadBtn.classList.remove('hidden');
+
+                        // Update Mode UI
+                        els.modeTitle.innerText = "Edit Mode";
+                        els.modeDesc.innerText = "Describe how to change the image(s).";
+                        els.generateBtnText.innerText = `Edit (${COST_PER_GEN} Nano)`;
+                        els.promptInput.placeholder = "Make the background a cyberpunk city...";
+                    }
                 };
                 reader.readAsDataURL(file);
-            }
+            });
         };
 
         els.clearUploadBtn.onclick = (e) => {
             e.stopPropagation(); // Prevent opening file dialog
-            uploadedImageBase64 = null;
+            uploadedImages = [];
             els.uploadedPreview.classList.add('hidden');
+            els.uploadedPreview.innerHTML = '';
             els.uploadPlaceholder.classList.remove('hidden');
             els.clearUploadBtn.classList.add('hidden');
             els.fileInput.value = '';
@@ -872,9 +889,10 @@
                     prompt: prompt,
                     userId: currentUser.uid,
                     customKey: customKey || undefined,
-                    isEdit: !!uploadedImageBase64,
-                    imageBase64: uploadedImageBase64,
-                    imageMime: uploadedImageMime
+                    isEdit: uploadedImages.length > 0,
+                    imageBase64: uploadedImages[0]?.base64,
+                    imageMime: uploadedImages[0]?.mime,
+                    images: uploadedImages.map(i => ({ base64: i.base64, mime: i.mime }))
                 };
 
                 // Check queue status first
