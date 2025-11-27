@@ -228,6 +228,11 @@
     Copy Link
 </button>
                     </div>
+
+                    <!-- Add this small "last updated" indicator inside the Referral Link Card (e.g. below the earnings) -->
+                    <div class="mt-2 text-xs text-neutral-500">
+                        Last update: <span id="last-updated">never</span>
+                    </div>
                 </div>
 
                 <!-- Stats Cards -->
@@ -577,28 +582,41 @@
 
                 // Listen to referral stats in real-time
                 console.log('Setting up real-time listener...');
-                referralsUnsubscribe = onSnapshot(referralDocRef, (doc) => {
-                    if (doc.exists()) {
-                        console.log('Referral data updated:', doc.data());
-                        const data = doc.data();
-                        updateDashboard(data);
-                    } else {
-                        console.log('No referral document yet, using default values');
-                        // Initialize with zeros if document doesn't exist yet
-                        updateDashboard({
-                            clicks: 0,
-                            signups: 0,
-                            successful: 0,
-                            earnings: 0,
-                            clickHistory: [],
-                            signupHistory: [],
-                            successHistory: []
-                        });
-                    }
-                }, (error) => {
-                    console.error('Snapshot error:', error);
-                    showToast('error', 'Error listening to referral updates: ' + error.message);
-                });
+                referralsUnsubscribe = onSnapshot(referralDocRef, (docSnap) => {
+    if (docSnap.exists()) {
+        console.log('Referral data updated:', docSnap.data());
+        const data = docSnap.data();
+        updateDashboard(data);
+
+        // Update visible last-updated indicator (prefer backend-updatedAt if present)
+        try {
+            const lastEl = document.getElementById('last-updated');
+            if (lastEl) {
+                if (data.updatedAt && data.updatedAt.seconds) {
+                    lastEl.textContent = new Date(data.updatedAt.seconds * 1000).toLocaleString();
+                } else {
+                    lastEl.textContent = new Date().toLocaleString();
+                }
+            }
+        } catch (e) { console.warn('Error updating last-updated element', e); }
+    } else {
+        console.log('No referral document yet, using default values');
+        updateDashboard({
+            clicks: 0,
+            signups: 0,
+            successful: 0,
+            earnings: 0,
+            clickHistory: [],
+            signupHistory: [],
+            successHistory: []
+        });
+        const lastEl = document.getElementById('last-updated');
+        if (lastEl) lastEl.textContent = 'never';
+    }
+}, (error) => {
+    console.error('Snapshot error:', error);
+    showToast('error', 'Error listening to referral updates: ' + (error.message || error));
+});
 
                 // Load referral details
                 console.log('Loading referrals list...');
