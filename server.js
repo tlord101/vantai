@@ -297,6 +297,43 @@ app.post('/api/referral/track-purchase', async (req, res) => {
   }
 });
 
+// Simple redirect endpoint used in referral links: GET /r?ref=CODE
+// Records the click (fire-and-forget POST to /api/referral/track-click) then redirects to the site root.
+app.get('/r', async (req, res) => {
+  try {
+    const referralCode = req.query.ref || req.query.code || null;
+    if (!referralCode) {
+      return res.status(400).send('Missing referral code');
+    }
+
+    // Determine base URL to call back to this server. Prefer explicit env var, else use localhost with PORT.
+    const base = process.env.BASE_URL || process.env.SITE_BASE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : `http://localhost:${PORT}`);
+    const trackUrl = `${base.replace(/\/$/, '')}/api/referral/track-click`;
+
+    // Fire-and-forget: record the click asynchronously
+    try {
+      if (typeof fetch === 'function') {
+        fetch(trackUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ referralCode })
+        }).catch(err => console.error('Failed to call track-click:', err));
+      } else {
+        // If fetch is not available in runtime, just log it
+        console.log('Skipping remote track-call; fetch unavailable. referralCode=', referralCode);
+      }
+    } catch (err) {
+      console.error('Error while attempting to record referral click:', err);
+    }
+
+    // Redirect the user to the site root (change if you want a different landing page)
+    return res.redirect('/');
+  } catch (err) {
+    console.error('Error in /r handler:', err);
+    return res.status(500).send('Internal error');
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
