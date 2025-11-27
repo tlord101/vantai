@@ -867,7 +867,7 @@
                 els.loadingText.innerText = "Preparing your request...";
 
                 // Call backend API for generation
-                const customKey = els.customKeyInput.value.trim();
+                const customKey = els.customKeyInput?.value?.trim();
                 const requestBody = {
                     prompt: prompt,
                     userId: currentUser.uid,
