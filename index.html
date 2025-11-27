@@ -435,15 +435,23 @@
                         <label class="text-xs text-neutral-400 uppercase tracking-wider font-bold mb-2 block">Select
                             Amount</label>
                         <div class="grid grid-cols-3 gap-3">
-                            <button onclick="selectAmount(10)"
-                                class="amount-btn py-3 rounded-lg font-bold text-sm bg-neutral-800 text-neutral-300 border border-neutral-700 hover:bg-neutral-700 transition-all"
-                                data-val="10">10 Nano</button>
                             <button onclick="selectAmount(20)"
                                 class="amount-btn py-3 rounded-lg font-bold text-sm bg-neutral-800 text-neutral-300 border border-neutral-700 hover:bg-neutral-700 transition-all"
                                 data-val="20">20 Nano</button>
+                            <button onclick="selectAmount(30)"
+                                class="amount-btn py-3 rounded-lg font-bold text-sm bg-neutral-800 text-neutral-300 border border-neutral-700 hover:bg-neutral-700 transition-all"
+                                data-val="30">30 Nano</button>
                             <button onclick="selectAmount(50)"
                                 class="amount-btn py-3 rounded-lg font-bold text-sm bg-neutral-800 text-neutral-300 border border-neutral-700 hover:bg-neutral-700 transition-all"
                                 data-val="50">50 Nano</button>
+                        </div>
+                        <div class="mt-3">
+                            <label class="text-xs text-neutral-400 uppercase tracking-wider font-bold mb-2 block">Custom amount (min 20)</label>
+                            <div class="flex items-center gap-2">
+                                <input id="custom-nano-input" type="number" min="20" step="1" value="20"
+                                    class="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-2 text-sm text-white outline-none" />
+                                <button type="button" onclick="applyCustomAmount()" class="px-3 py-2 bg-yellow-400 text-neutral-900 rounded-lg font-semibold">Set</button>
+                            </div>
                         </div>
                     </div>
 
@@ -745,11 +753,13 @@
 
         // Expose function to window for the onclick in HTML
         window.selectAmount = (amount) => {
-            currentAmount = amount;
-            els.paymentTotal.innerText = `₦${(amount * PRICE_PER_NANO).toLocaleString()}`;
+            // enforce minimum of 20
+            const amt = Math.max(20, parseInt(amount) || 20);
+            currentAmount = amt;
+            els.paymentTotal.innerText = `₦${(amt * PRICE_PER_NANO).toLocaleString()}`;
             // Highlight button
             document.querySelectorAll('.amount-btn').forEach(btn => {
-                if (parseInt(btn.dataset.val) === amount) {
+                if (parseInt(btn.dataset.val) === amt) {
                     btn.classList.add('bg-yellow-400', 'text-neutral-900', 'shadow-lg');
                     btn.classList.remove('bg-neutral-800', 'text-neutral-300', 'border');
                 } else {
@@ -757,9 +767,24 @@
                     btn.classList.add('bg-neutral-800', 'text-neutral-300', 'border');
                 }
             });
+            // update custom input value
+            const customInput = document.getElementById('custom-nano-input');
+            if (customInput) customInput.value = amt;
         };
-        // Init default selection
-        window.selectAmount(10);
+        // Init default selection (minimum 20)
+        window.selectAmount(20);
+
+        window.applyCustomAmount = () => {
+            const input = document.getElementById('custom-nano-input');
+            if (!input) return;
+            let val = parseInt(input.value || 0);
+            if (isNaN(val) || val < 20) {
+                showToast('warning', 'Minimum purchase is 20 Nano');
+                val = 20;
+                input.value = 20;
+            }
+            window.selectAmount(val);
+        };
 
         els.paystackBtn.onclick = () => {
             if (!currentUser) return;
