@@ -574,7 +574,7 @@
                 // Make sure your server (Cloud Function / Cloud Run) exposes GET /r?ref=CODE
                 const redirectEndpoint = `${API_BASE_URL}/r`;
                 const referralUrl = `${redirectEndpoint}?ref=${referralCode}`;
-                console.log('Base URL:', baseUrl);
+                console.log('Base URL:', API_BASE_URL);
                 console.log('Full referral URL:', referralUrl);
                 console.log('Referral link element:', els.referralLink);
                 console.log('Element exists:', !!els.referralLink);
